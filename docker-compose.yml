@@ -1,0 +1,26 @@
+services:
+  pangolin-traffic-viewer:
+    image: ghcr.io/vitafortis/pangolin-traffic-viewer:latest
+    # To build locally instead: comment out `image` above and uncomment `build`.
+    # build: .
+    container_name: pangolin-traffic-viewer
+    restart: unless-stopped
+    init: true
+    ports:
+      - "8787:8787"
+    environment:
+      # Required: 32+ random chars. Encrypts stored API keys and signs sessions. Generate: openssl rand -hex 32
+      APP_SECRET: ${APP_SECRET:?Set APP_SECRET (openssl rand -hex 32)}
+      # Strongly recommended whenever the port is reachable by anyone but you.
+      APP_PASSWORD: ${APP_PASSWORD:-}
+      # Set to 1 when running behind a reverse proxy (Traefik, Caddy, nginx, or Pangolin itself).
+      TRUST_PROXY: ${TRUST_PROXY:-0}
+      # Download the free DB-IP City Lite database on first start for city-level placement.
+      GEOIP_AUTO_DOWNLOAD: ${GEOIP_AUTO_DOWNLOAD:-1}
+      RETENTION_DAYS: ${RETENTION_DAYS:-30}
+      DEMO: ${DEMO:-0}
+    volumes:
+      - ptv-data:/data
+
+volumes:
+  ptv-data:
