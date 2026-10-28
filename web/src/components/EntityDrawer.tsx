@@ -102,7 +102,7 @@ export function EntityDrawer({
                     <span className={isIp ? "font-mono" : ""}>{entity.value}</span>
                 </span>
             }
-            subtitle={p ? `Seen ${fmtNum(p.allTime.total)} times since ${p.allTime.first_ts ? fmtTime(p.allTime.first_ts) : "—"} · last ${ago(p.allTime.last_ts)}` : isIp ? "IP address" : "User"}
+            subtitle={p ? `Seen ${fmtNum(p.allTime.total)} time${p.allTime.total === 1 ? "" : "s"} since ${p.allTime.first_ts ? fmtTime(p.allTime.first_ts) : "—"} · last ${ago(p.allTime.last_ts)}` : isIp ? "IP address" : "User"}
             onClose={onClose}
         >
             <div className="flex flex-wrap gap-2 border-b border-border px-4 py-3">

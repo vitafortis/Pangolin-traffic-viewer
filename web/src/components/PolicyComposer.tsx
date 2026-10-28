@@ -167,8 +167,10 @@ export function PolicyComposer({ meta, initial, onClose, onApplied }: { meta: Me
                                 <TriangleAlert className="mt-0.5 size-4 shrink-0 text-warning" />
                                 <div className="space-y-2">
                                     <div>
-                                        <b>Rules are turned off for this resource.</b> New rules do nothing until rules are turned on, and turning them on also activates the {preview.existingRules.length} existing rule
-                                        {preview.existingRules.length === 1 ? "" : "s"} shown below.
+                                        <b>Rules are turned off for this resource.</b> New rules do nothing until rules are turned on
+                                        {preview.existingRules.length > 0
+                                            ? `, and turning them on also activates the ${preview.existingRules.length} existing rule${preview.existingRules.length === 1 ? "" : "s"} shown below.`
+                                            : "."}
                                     </div>
                                     <label className="flex items-center gap-2">
                                         <input type="checkbox" className="accent-[var(--primary)]" checked={enable} onChange={(e) => setEnable(e.target.checked)} /> Turn rules on for this resource
