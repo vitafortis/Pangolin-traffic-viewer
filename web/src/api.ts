@@ -142,3 +142,110 @@ export const countryLabel = (cc: string | null) => {
         return cc;
     }
 };
+
+// ---- URL state: every view is a shareable link -------------------------------
+
+export type Tab = "map" | "explore" | "policies" | "alerts" | "settings";
+export const TABS: Tab[] = ["map", "explore", "policies", "alerts", "settings"];
+
+const LIST_KEYS = ["kinds", "sites", "resources", "countries", "connections"] as const;
+
+export function filtersToSearch(f: Filters, extra: Record<string, string | undefined> = {}) {
+    const p = new URLSearchParams();
+    for (const [k, v] of Object.entries(extra)) if (v) p.set(k, v);
+    if (f.range !== "24h") p.set("range", f.range);
+    if (f.range === "custom" && f.from && f.to) {
+        p.set("from", String(f.from));
+        p.set("to", String(f.to));
+    }
+    for (const k of LIST_KEYS) if (f[k].length) p.set(k, f[k].join(","));
+    if (f.allowed) p.set("allowed", f.allowed);
+    if (f.ip) p.set("ip", f.ip);
+    if (f.q) p.set("q", f.q);
+    return p;
+}
+
+export function filtersFromSearch(p: URLSearchParams): Filters {
+    const f = emptyFilters();
+    const range = p.get("range");
+    if (range && (range in RANGES || range === "custom")) f.range = range;
+    if (f.range === "custom") {
+        f.from = Number(p.get("from")) || undefined;
+        f.to = Number(p.get("to")) || undefined;
+        if (!f.from || !f.to) f.range = "24h";
+    }
+    for (const k of LIST_KEYS) {
+        const v = p.get(k);
+        if (v) (f[k] as string[]) = v.split(",").filter(Boolean);
+    }
+    const allowed = p.get("allowed");
+    if (allowed === "1" || allowed === "0") f.allowed = allowed;
+    f.ip = p.get("ip") ?? "";
+    f.q = p.get("q") ?? "";
+    return f;
+}
+
+export function downloadUrl(path: string, params: Record<string, string>) {
+    return `${path}?${new URLSearchParams(params)}`;
+}
+
+// ---- explore / investigate / policies ------------------------------------------
+
+export type SavedView = { id: number; name: string; state: { filters?: Partial<Filters>; groupBy?: string; tab?: Tab } };
+
+export type Entity = { type: "ip" | "actor"; value: string };
+export type EntityProfile = {
+    type: "ip" | "actor";
+    value: string;
+    summary: { total: number; allowed: number | null; denied: number | null; first_ts: number | null; last_ts: number | null; ips: number; actors: number; countries: number };
+    allTime: { first_ts: number | null; last_ts: number | null; total: number };
+    resources: GroupRow[];
+    locations: GroupRow[];
+    related: GroupRow[];
+    agents: GroupRow[];
+    paths: GroupRow[];
+    neighbours: { key: string; count: number; denied: number }[];
+    timeline: { step: number; rows: { t: number; count: number; denied: number }[] };
+    recent: EventRow[];
+};
+
+export type Pivot = { rows: { key: string; label: string; total: number }[]; cols: { key: string; label: string; total: number }[]; cells: number[][] };
+
+export type RuleAction = "DROP" | "PASS" | "ACCEPT";
+export type RuleMatch = "CIDR" | "IP" | "PATH" | "COUNTRY" | "COUNTRY_IS_NOT" | "ASN" | "REGION" | "METHOD";
+export type DraftRule = { action: Exclude<RuleAction, "ACCEPT">; match: RuleMatch; value: string };
+export type PangolinRule = { ruleId: number; action: RuleAction; match: RuleMatch; value: string; priority: number; enabled: boolean };
+export type RuleSet = { applyRules: boolean; policyName: string | null; direct: PangolinRule[]; policy: PangolinRule[] };
+export type PolicyDraft = { connectionId?: number; resourceId?: number; rules: DraftRule[]; note?: string };
+export type Suggestion = {
+    id: string;
+    connectionId: number;
+    resourceId: number;
+    resourceName: string;
+    kind: "geo-allowlist" | "country-block" | "noisy-ips" | "scanner-paths";
+    title: string;
+    rationale: string;
+    rules: DraftRule[];
+    estimate: { blocksDenied: number; blocksAllowed: number; users: number };
+};
+export type Preview = {
+    rules: (DraftRule & { priority: number })[];
+    position: "top" | "bottom";
+    rulesEnabled: boolean;
+    existingRules: (PangolinRule & { source: "resource" | "policy" })[];
+    scanned: number;
+    days: number;
+    newlyDropped: number;
+    droppedDenied: number;
+    droppedAllowed: number;
+    users: { actor: string; events: number }[];
+    ips: number;
+    countries: { code: string; name: string; events: number }[];
+    existingNowActive: number;
+    samples: (EventRow & { newlyBy: string })[];
+    approximate: boolean;
+    requester: { ip: string; country: string | null; blocked: boolean } | null;
+};
+export type PolicyAction = { id: number; connection_id: number; resource_id: number; resource_name: string; connection_name: string; ts: number; rules: PangolinRule[]; enabled_apply_rules: number; note: string | null; undone_at: number | null };
+
+export const ruleText = (r: { action: string; match: string; value: string }) => `${r.match} ${r.value} → ${r.action}`;

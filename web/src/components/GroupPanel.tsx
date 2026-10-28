@@ -1,3 +1,5 @@
+import { useState } from "react";
+import { ArrowDown, ArrowUp } from "lucide-react";
 import { ago, flag, fmtNum, type GroupRow } from "../api";
 
 export const GROUP_OPTIONS = [
@@ -13,9 +15,22 @@ export const GROUP_OPTIONS = [
     ["kind", "Log type"]
 ] as const;
 
+type Sort = { by: "count" | "denied" | "ips" | "label"; dir: 1 | -1 };
+
+function Head({ k, sort, setSort, right, children }: { k: Sort["by"]; sort: Sort; setSort: (f: (s: Sort) => Sort) => void; right?: boolean; children: React.ReactNode }) {
+    return (
+        <button className={`inline-flex items-center gap-1 uppercase hover:text-foreground ${right ? "flex-row-reverse" : ""} ${sort.by === k ? "text-foreground" : ""}`} onClick={() => setSort((s) => ({ by: k, dir: s.by === k ? (s.dir === 1 ? -1 : 1) : k === "label" ? 1 : -1 }))}>
+            {children}
+            {sort.by === k && (sort.dir === -1 ? <ArrowDown className="size-3" /> : <ArrowUp className="size-3" />)}
+        </button>
+    );
+}
+
 export function GroupPanel({ by, setBy, rows, onPick }: { by: string; setBy: (b: string) => void; rows: GroupRow[]; onPick: (row: GroupRow) => void }) {
+    const [sort, setSort] = useState<Sort>({ by: "count", dir: -1 });
     const max = Math.max(1, ...rows.map((r) => r.count));
-    const pickable = ["country", "ip", "resource", "site"].includes(by);
+    const pickable = ["country", "ip", "resource", "site", "actor"].includes(by);
+    const sorted = [...rows].sort((a, b) => (sort.by === "label" ? String(a.label ?? "").localeCompare(String(b.label ?? "")) : a[sort.by] - b[sort.by]) * sort.dir);
     return (
         <>
             <div className="flex items-center gap-2 border-b border-border px-3 py-2.5">
@@ -38,15 +53,23 @@ export function GroupPanel({ by, setBy, rows, onPick }: { by: string; setBy: (b:
                     </colgroup>
                     <thead>
                         <tr>
-                            <th>{GROUP_OPTIONS.find((g) => g[0] === by)?.[1]}</th>
-                            <th className="text-right">Events</th>
-                            <th className="text-right">Denied</th>
-                            <th className="text-right">IPs</th>
+                            <th>
+                                <Head k="label" sort={sort} setSort={setSort}>{GROUP_OPTIONS.find((g) => g[0] === by)?.[1]}</Head>
+                            </th>
+                            <th className="text-right">
+                                <Head k="count" sort={sort} setSort={setSort} right>Events</Head>
+                            </th>
+                            <th className="text-right">
+                                <Head k="denied" sort={sort} setSort={setSort} right>Denied</Head>
+                            </th>
+                            <th className="text-right">
+                                <Head k="ips" sort={sort} setSort={setSort} right>IPs</Head>
+                            </th>
                         </tr>
                     </thead>
                     <tbody>
-                        {rows.map((r) => (
-                            <tr key={r.key ?? "null"} className={pickable ? "click" : ""} onClick={() => pickable && onPick(r)} title={`${r.label ?? "—"} · last seen ${ago(r.last_ts)}${pickable ? " · click to filter" : ""}`}>
+                        {sorted.map((r) => (
+                            <tr key={r.key ?? "null"} className={pickable ? "click" : ""} onClick={() => pickable && onPick(r)} title={`${r.label ?? "—"} · last seen ${ago(r.last_ts)}${pickable ? (by === "ip" || by === "actor" ? " · click to investigate" : " · click to filter") : ""}`}>
                                 <td className="relative max-w-none">
                                     {/* Share of the largest row; the denied share sits at its right end. */}
                                     <div className="absolute inset-y-1 left-0 flex overflow-hidden rounded-r-[4px]" style={{ width: `${(r.count / max) * 100}%` }}>

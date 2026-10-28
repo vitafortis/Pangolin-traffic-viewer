@@ -18,7 +18,7 @@ const blank = (): Draft => ({ name: "", enabled: true, conditions: {}, threshold
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const csv = (s: string) => s.split(/[,\s]+/).map((x) => x.trim()).filter(Boolean);
 
-export function AlertsView({ meta, onAck }: { meta: Meta | null; onAck: () => void }) {
+export function AlertsView({ meta, onAck, seed, onSeedUsed }: { meta: Meta | null; onAck: () => void; seed?: { name: string; conditions: Conditions } | null; onSeedUsed?: () => void }) {
     const [rules, setRules] = useState<Rule[]>([]);
     const [events, setEvents] = useState<AlertEvent[]>([]);
     const [draft, setDraft] = useState<Draft | null>(null);
@@ -29,6 +29,13 @@ export function AlertsView({ meta, onAck }: { meta: Meta | null; onAck: () => vo
         api<AlertEvent[]>("/api/alerts/events").then(setEvents);
     };
     useEffect(load, []);
+
+    // Opened from an investigation ("Alert on activity…"): start a draft with those conditions.
+    useEffect(() => {
+        if (!seed) return;
+        setDraft({ ...blank(), name: seed.name, conditions: seed.conditions });
+        onSeedUsed?.();
+    }, [seed]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const ack = async (id: number) => {
         await api(`/api/alerts/events/${id}/ack`, { method: "POST" });

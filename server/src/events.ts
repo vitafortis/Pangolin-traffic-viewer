@@ -1,4 +1,4 @@
-import { db } from "./db.ts";
+import { db, ipv4ToNum } from "./db.ts";
 import { sha1 } from "./crypto.ts";
 import { lookup, cleanIp } from "./geo.ts";
 import type { AccessLog, ConnectionLog, RequestLog } from "./pangolin.ts";
@@ -31,12 +31,13 @@ export type TrafficEvent = {
     bytes_tx: number | null;
     bytes_rx: number | null;
     raw: string | null;
+    ip_num?: number | null;
 };
 
 const COLS = [
     "connection_id", "kind", "source_key", "ts", "allowed", "reason", "ip", "country", "city", "lat", "lon",
     "resource_id", "resource_name", "site_id", "actor", "actor_type", "host", "path", "method", "protocol",
-    "user_agent", "bytes_tx", "bytes_rx", "raw"
+    "user_agent", "bytes_tx", "bytes_rx", "raw", "ip_num"
 ] as const;
 
 const insertStmt = db.prepare(
@@ -47,7 +48,7 @@ const insertStmt = db.prepare(
 export function insertEvents(evts: TrafficEvent[]): TrafficEvent[] {
     const fresh: TrafficEvent[] = [];
     for (const e of evts) {
-        const r = insertStmt.run(...COLS.map((c) => e[c] ?? null));
+        const r = insertStmt.run(...COLS.map((c) => (c === "ip_num" ? ipv4ToNum(e.ip) : e[c] ?? null)));
         if (r.changes > 0) fresh.push({ ...e, id: Number(r.lastInsertRowid) });
     }
     return fresh;

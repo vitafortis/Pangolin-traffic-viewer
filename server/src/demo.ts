@@ -1,6 +1,8 @@
 /** Synthetic traffic so the UI can be explored without a Pangolin API key (DEMO=1). */
 import { db, now, tx } from "./db.ts";
 import type { Kind, TrafficEvent } from "./events.ts";
+import type { NewRule } from "./pangolin.ts";
+import { evaluate, orderRules, type SimRule } from "./rules.ts";
 
 const SITES = [
     { id: 1, name: "hq-ashburn", lat: 39.04, lon: -77.49, label: "Ashburn, US" },
@@ -105,6 +107,25 @@ function makeEvent(connectionId: number, ts: number): TrafficEvent {
     };
 }
 
+/** Rules "applied" to the demo org (see DemoStore in policies.ts), so the demo reacts to them. */
+function activeDemoRules(connectionId: number): Map<number, SimRule[]> {
+    const rows = db.prepare(`SELECT d.resource_id, d.action, d.match, d.value, d.priority, d.enabled FROM demo_rules d
+        JOIN resources r ON r.connection_id = d.connection_id AND r.resource_id = d.resource_id
+        WHERE d.connection_id = ? AND r.demo_apply_rules = 1`).all(connectionId) as (Omit<NewRule, "enabled"> & { resource_id: number; enabled: number })[];
+    const out = new Map<number, SimRule[]>();
+    for (const r of rows) (out.get(r.resource_id) ?? out.set(r.resource_id, []).get(r.resource_id)!).push({ ...r, enabled: !!r.enabled, source: "resource" });
+    for (const [k, v] of out) out.set(k, orderRules(v));
+    return out;
+}
+
+function applyDemoRules(evts: TrafficEvent[], rules: Map<number, SimRule[]>) {
+    for (const e of evts) {
+        const rs = e.resource_id != null ? rules.get(e.resource_id) : undefined;
+        if (rs && e.kind === "request" && evaluate(rs, e).action === "DROP") Object.assign(e, { allowed: 0, reason: 203, actor: null, actor_type: null });
+    }
+    return evts;
+}
+
 export function generateDemoEvents(connectionId: number, cursors: Partial<Record<Kind, number>>): TrafficEvent[] {
     const t = now();
     const from = cursors.request ?? t - 24 * 3600;
@@ -123,5 +144,5 @@ export function generateDemoEvents(connectionId: number, cursors: Partial<Record
         }
     }
     cursors.request = t;
-    return out;
+    return applyDemoRules(out, activeDemoRules(connectionId));
 }

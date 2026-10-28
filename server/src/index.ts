@@ -13,6 +13,8 @@ import { initGeo } from "./geo.ts";
 import { initAlerts } from "./alerts.ts";
 import { startAllPollers } from "./ingest.ts";
 import { apiRoutes } from "./routes/api.ts";
+import { exploreRoutes } from "./routes/explore.ts";
+import { policyRoutes } from "./routes/policies.ts";
 
 assertConfig();
 await initGeo();
@@ -64,6 +66,8 @@ app.addHook("onRequest", async (req, reply) => {
 });
 
 await app.register(apiRoutes);
+await app.register(exploreRoutes);
+await app.register(policyRoutes);
 
 // ---- web UI (built by `npm run build`) -------------------------------------
 const webDist = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../web/dist");
