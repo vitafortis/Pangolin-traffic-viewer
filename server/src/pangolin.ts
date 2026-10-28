@@ -77,6 +77,18 @@ export type PangolinResource = {
     targets?: { siteId: number }[];
 };
 
+export type RuleAction = "ACCEPT" | "DROP" | "PASS";
+export type RuleMatch = "CIDR" | "IP" | "PATH" | "COUNTRY" | "COUNTRY_IS_NOT" | "ASN" | "REGION" | "METHOD";
+export type NewRule = { action: RuleAction; match: RuleMatch; value: string; priority: number; enabled: boolean };
+export type PangolinRule = NewRule & { ruleId: number };
+export type PangolinResourceDetail = {
+    resourceId: number;
+    name: string;
+    applyRules: boolean | null;
+    resourcePolicyId: number | null;
+    defaultResourcePolicyId: number | null;
+};
+
 type Paged<K extends string, T> = { [P in K]: T[] } & {
     pagination: { total: number; limit?: number; offset?: number; page?: number; pageSize?: number };
 };
@@ -84,18 +96,28 @@ type Paged<K extends string, T> = { [P in K]: T[] } & {
 export class PangolinClient {
     constructor(private creds: PangolinCreds) {}
 
-    private async get<T>(path: string, params: Record<string, string | number | undefined> = {}): Promise<T> {
+    private get<T>(path: string, params: Record<string, string | number | undefined> = {}): Promise<T> {
+        return this.request<T>("GET", path, params);
+    }
+
+    private async request<T>(method: string, path: string, params: Record<string, string | number | undefined> = {}, body?: unknown): Promise<T> {
         const url = new URL(this.creds.baseUrl.replace(/\/$/, "") + path);
         for (const [k, v] of Object.entries(params)) if (v !== undefined) url.searchParams.set(k, String(v));
         const res = await fetch(url, {
-            headers: { Authorization: `Bearer ${this.creds.apiKey}`, Accept: "application/json" },
+            method,
+            headers: {
+                Authorization: `Bearer ${this.creds.apiKey}`,
+                Accept: "application/json",
+                ...(body !== undefined ? { "Content-Type": "application/json" } : {})
+            },
+            body: body !== undefined ? JSON.stringify(body) : undefined,
             signal: AbortSignal.timeout(30_000)
         });
-        const body = (await res.json().catch(() => null)) as { data: T; message?: string } | null;
-        if (!res.ok || !body) {
-            throw new PangolinError(res.status, body?.message ?? `HTTP ${res.status} from ${url.pathname}`);
+        const json = (await res.json().catch(() => null)) as { data: T; message?: string } | null;
+        if (!res.ok || !json) {
+            throw new PangolinError(res.status, json?.message ?? `HTTP ${res.status} from ${url.pathname}`);
         }
-        return body.data;
+        return json.data;
     }
 
     private org(p: string) {
@@ -122,6 +144,34 @@ export class PangolinClient {
             if (d[key].length === 0 || out.length >= d.pagination.total) break;
         }
         return out;
+    }
+
+    // ---- resource rules (Pangolin evaluates a resource's own rules, lowest priority first, then its policy's) ----
+
+    getResource(resourceId: number) {
+        return this.get<PangolinResourceDetail>(`/resource/${resourceId}`);
+    }
+
+    async listResourceRules(resourceId: number): Promise<PangolinRule[]> {
+        const d = await this.get<{ rules: PangolinRule[] }>(`/resource/${resourceId}/rules`, { limit: 1000, offset: 0 });
+        return d.rules;
+    }
+
+    async getResourcePolicyRules(resourcePolicyId: number): Promise<{ name: string | null; applyRules: boolean | null; rules: PangolinRule[] }> {
+        const d = await this.get<{ name?: string; applyRules?: boolean; rules?: PangolinRule[] }>(`/resource-policy/${resourcePolicyId}`);
+        return { name: d.name ?? null, applyRules: d.applyRules ?? null, rules: d.rules ?? [] };
+    }
+
+    createResourceRule(resourceId: number, rule: NewRule) {
+        return this.request<PangolinRule>("PUT", `/resource/${resourceId}/rule`, {}, rule);
+    }
+
+    deleteResourceRule(resourceId: number, ruleId: number) {
+        return this.request<unknown>("DELETE", `/resource/${resourceId}/rule/${ruleId}`);
+    }
+
+    setApplyRules(resourceId: number, applyRules: boolean) {
+        return this.request<unknown>("POST", `/resource/${resourceId}`, {}, { applyRules });
     }
 
     /** Pages through a log endpoint (newest first) between timeStart and timeEnd. */

@@ -1,18 +1,38 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Bell, Globe2, LogOut, Moon, PanelLeftClose, PanelLeftOpen, Settings, Sun } from "lucide-react";
-import { ApiError, api, emptyFilters, type EventRow, type Filters, type Meta, type Site } from "./api";
+import { Bell, Globe2, LogOut, Moon, PanelLeftClose, PanelLeftOpen, Settings, ShieldHalf, Sun, TableProperties } from "lucide-react";
+import {
+    ApiError,
+    TABS,
+    api,
+    emptyFilters,
+    filtersFromSearch,
+    filtersToSearch,
+    type Conditions,
+    type Entity,
+    type EventRow,
+    type Filters,
+    type Meta,
+    type PolicyDraft,
+    type SavedView,
+    type Site,
+    type Tab
+} from "./api";
 import { useTheme } from "./theme";
 import { Logo } from "./components/Logo";
 import { FilterBar } from "./components/FilterBar";
 import { MapView } from "./components/MapView";
 import { AlertsView } from "./components/AlertsView";
 import { SettingsView } from "./components/SettingsView";
+import { ExploreView } from "./components/ExploreView";
+import { PoliciesView } from "./components/PoliciesView";
+import { PolicyComposer } from "./components/PolicyComposer";
+import { EntityDrawer } from "./components/EntityDrawer";
 import pkg from "../package.json";
-
-type Tab = "map" | "alerts" | "settings";
 
 const NAV = [
     { id: "map", label: "Traffic", icon: Globe2 },
+    { id: "explore", label: "Explore", icon: TableProperties },
+    { id: "policies", label: "Policies", icon: ShieldHalf },
     { id: "alerts", label: "Alerts", icon: Bell },
     { id: "settings", label: "Settings", icon: Settings }
 ] as const;
@@ -61,15 +81,28 @@ function Login({ onDone }: { onDone: () => void }) {
     );
 }
 
+function readUrl() {
+    const p = new URLSearchParams(location.search);
+    const tab = p.get("tab") as Tab | null;
+    return { tab: tab && TABS.includes(tab) ? tab : "map", filters: filtersFromSearch(p), groupBy: p.get("group") ?? localStorage.getItem("ptv.groupBy") ?? "country" };
+}
+
 function Main({ authRequired }: { authRequired: boolean }) {
-    const [tab, setTab] = useState<Tab>(() => (["map", "alerts", "settings"].includes(location.hash.slice(1)) ? (location.hash.slice(1) as Tab) : "map"));
+    const initial = useState(readUrl)[0];
+    const [tab, setTab] = useState<Tab>(initial.tab as Tab);
+    const [filters, setFilters] = useState<Filters>(initial.filters);
+    const [groupBy, setGroupBy] = useState(initial.groupBy);
     const [meta, setMeta] = useState<Meta | null>(null);
-    const [filters, setFilters] = useState<Filters>(emptyFilters);
     const [tick, setTick] = useState(0);
     const [live, setLive] = useState<EventRow[]>([]);
     const [connected, setConnected] = useState(false);
     const [unacked, setUnacked] = useState(0);
     const [placing, setPlacing] = useState<Site | null>(null);
+    const [entity, setEntity] = useState<Entity | null>(null);
+    const [composer, setComposer] = useState<PolicyDraft | null>(null);
+    const [alertSeed, setAlertSeed] = useState<{ name: string; conditions: Conditions } | null>(null);
+    const [policyVersion, setPolicyVersion] = useState(0);
+    const [toast, setToast] = useState<string | null>(null);
     const [collapsed, setCollapsed] = useState(() => localStorage.getItem("ptv.sidebar") === "collapsed");
     const [theme, setTheme] = useTheme();
     const pending = useRef(false);
@@ -88,9 +121,12 @@ function Main({ authRequired }: { authRequired: boolean }) {
         return () => clearInterval(t);
     }, [reloadMeta, reloadUnacked]);
 
+    // The URL is the source of truth for what's on screen, so any view can be bookmarked or shared.
     useEffect(() => {
-        history.replaceState(null, "", `#${tab}`);
-    }, [tab]);
+        const qs = filtersToSearch(filters, { tab: tab === "map" ? undefined : tab, group: groupBy === "country" ? undefined : groupBy }).toString();
+        history.replaceState(null, "", qs ? `?${qs}` : location.pathname);
+        localStorage.setItem("ptv.groupBy", groupBy);
+    }, [tab, filters, groupBy]);
 
     useEffect(() => {
         localStorage.setItem("ptv.sidebar", collapsed ? "collapsed" : "open");
@@ -106,6 +142,12 @@ function Main({ authRequired }: { authRequired: boolean }) {
         window.addEventListener("keydown", onKey);
         return () => window.removeEventListener("keydown", onKey);
     }, []);
+
+    useEffect(() => {
+        if (!toast) return;
+        const t = setTimeout(() => setToast(null), 5000);
+        return () => clearTimeout(t);
+    }, [toast]);
 
     // Live updates: refetch aggregates at most every 5s while new events stream in.
     useEffect(() => {
@@ -128,6 +170,16 @@ function Main({ authRequired }: { authRequired: boolean }) {
 
     const startPlacing = (s: Site) => {
         setPlacing(s);
+        setTab("map");
+    };
+    const applyView = (v: SavedView) => {
+        setFilters({ ...emptyFilters(), ...v.state.filters });
+        if (v.state.groupBy) setGroupBy(v.state.groupBy);
+        if (v.state.tab && (v.state.tab === "map" || v.state.tab === "explore")) setTab(v.state.tab);
+    };
+    const filterToEntity = (e: Entity) => {
+        if (e.type === "ip") setFilters({ ...filters, ip: e.value });
+        else setFilters({ ...filters, q: `${filters.q} user:"${e.value === "(anonymous)" ? "anonymous" : e.value}"`.trim() });
         setTab("map");
     };
     const signOut = () => api("/api/logout", { method: "POST" }).then(() => location.reload());
@@ -198,23 +250,25 @@ function Main({ authRequired }: { authRequired: boolean }) {
                     )}
                 </div>
 
+                {(tab === "map" || tab === "explore") && <FilterBar meta={meta} filters={filters} setFilters={setFilters} viewExtras={{ groupBy, tab }} onApplyView={applyView} />}
                 {tab === "map" && (
-                    <>
-                        <FilterBar meta={meta} filters={filters} setFilters={setFilters} />
-                        <MapView
-                            meta={meta}
-                            theme={theme}
-                            filters={filters}
-                            setFilters={setFilters}
-                            tick={filters.range === "custom" ? 0 : tick}
-                            live={live}
-                            placing={placing}
-                            setPlacing={setPlacing}
-                            reloadMeta={reloadMeta}
-                        />
-                    </>
+                    <MapView
+                        meta={meta}
+                        filters={filters}
+                        setFilters={setFilters}
+                        tick={filters.range === "custom" ? 0 : tick}
+                        live={live}
+                        placing={placing}
+                        setPlacing={setPlacing}
+                        reloadMeta={reloadMeta}
+                        groupBy={groupBy}
+                        setGroupBy={setGroupBy}
+                        onOpenEntity={setEntity}
+                    />
                 )}
-                {tab === "alerts" && <AlertsView meta={meta} onAck={reloadUnacked} />}
+                {tab === "explore" && <ExploreView filters={filters} setFilters={setFilters} onDrill={() => setTab("map")} />}
+                {tab === "policies" && <PoliciesView meta={meta} onCompose={setComposer} version={policyVersion} />}
+                {tab === "alerts" && <AlertsView meta={meta} onAck={reloadUnacked} seed={alertSeed} onSeedUsed={() => setAlertSeed(null)} />}
                 {tab === "settings" && <SettingsView meta={meta} reload={reloadMeta} onPlace={startPlacing} />}
 
                 <nav className="fixed inset-x-0 bottom-0 z-30 flex h-14 border-t border-border bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden">
@@ -227,6 +281,33 @@ function Main({ authRequired }: { authRequired: boolean }) {
                     ))}
                 </nav>
             </main>
+
+            {entity && (
+                <EntityDrawer
+                    key={`${entity.type}:${entity.value}`}
+                    entity={entity}
+                    filters={filters}
+                    attribution={meta?.geoAttribution}
+                    onClose={() => setEntity(null)}
+                    onOpenEntity={setEntity}
+                    onFilter={filterToEntity}
+                    onBlock={(d) => (setEntity(null), setComposer(d))}
+                    onAlert={(name, conditions) => (setEntity(null), setAlertSeed({ name, conditions }), setTab("alerts"))}
+                />
+            )}
+            {composer && (
+                <PolicyComposer
+                    meta={meta}
+                    initial={composer}
+                    onClose={() => setComposer(null)}
+                    onApplied={(msg) => (setToast(msg), setPolicyVersion((v) => v + 1))}
+                />
+            )}
+            {toast && (
+                <div className="card fixed bottom-20 left-1/2 z-[60] -translate-x-1/2 px-4 py-2.5 text-[0.8125rem] shadow-surface-lg md:bottom-6" role="status">
+                    {toast}
+                </div>
+            )}
         </div>
     );
 }

@@ -70,6 +70,35 @@ Pangolin has no geo data for sites, so you set each site's location yourself. Un
 
 Each connection polls on its own interval, every 60s by default. The poller re-reads a 2-minute overlap and dedupes, so short outages don't lose data. If an endpoint returns 403 or 404, for example on a plan without access logs, the poller turns that endpoint off for the connection and keeps polling the others. Events are kept locally for `RETENTION_DAYS`, 30 by default. Pangolin's own default retention is 7 days.
 
+## Search and investigate
+
+The search box accepts a small query language. Terms are combined with AND, commas mean OR, and a leading `-` excludes matches:
+
+```
+country:RU,CN verdict:deny path:/wp-* -ip:10.0.0.0/8 user:anonymous agent:curl
+```
+
+Fields: `country`, `city`, `ip` (exact, CIDR, or `45.12.*`), `resource`, `site`, `user`, `host`, `path`, `method`, `verdict`, `kind`, `agent`, `reason`, `org`. Values containing `*` are anchored globs; other values match anywhere in the field. Click the **?** in the search box for examples.
+
+- **Links and saved views:** every filter is stored in the URL, so a view can be bookmarked or shared. **Views** saves named views, and **Export** downloads all matching events (up to 100k) as CSV or NDJSON.
+- **Events table:** columns are sortable and can be chosen with the column picker. The table loads more rows as you scroll.
+- **Investigate:** click any IP or user to see its activity, resources, locations, related users or IPs, neighbouring addresses in the same /24, user agents and requests. From there you can filter to it, block it, or create an alert.
+- **Explore:** a pivot of any two dimensions, e.g. country × resource, showing events, denials or unique IPs. Click a cell to open those events.
+
+## Policies
+
+Pangolin can block traffic per resource with rules. Each rule matches on country, region, ASN, IP/CIDR, path or method, and takes the action `DROP` or `PASS`. **Policies** turns what you see into those rules:
+
+- **Suggestions from your traffic:**
+  - an allowlist of the countries your signed-in users actually come from;
+  - countries that only ever produce denials;
+  - noisy IPs, collapsed to a /24 when several share one;
+  - scanner paths such as `/wp-login.php` and `/.env`.
+- **Impact preview:** before a rule is written, the app replays the last 7 days of traffic to that resource through a local model of Pangolin's rule engine, with and without the new rules. It shows what would be newly blocked, which signed-in users would have been locked out, and whether **your own IP** would be blocked. Rules that need confirmation (they block real users or you, or they turn rules on for the resource) need an explicit acknowledgement before they are written.
+- **One-click apply, with undo:** rules are written through Pangolin's API, and every change is recorded under **History** with an Undo button. This requires an API key with write access to resource rules. A read-only key still gets suggestions and previews.
+
+The app never creates `ACCEPT` rules, because in Pangolin `ACCEPT` skips authentication entirely. Allowlists are written as `PASS` for each allowed country followed by `COUNTRY ALL → DROP`, so allowed traffic still goes through sign-in. `REGION` and `ASN` rules can be written, but can't be simulated locally, so their previews are marked approximate.
+
 ## Alerts
 
 Each rule combines optional conditions:
@@ -90,7 +119,9 @@ server/  Fastify + node:sqlite (no native deps)
   bus.ts        in-process fan-out of new events → alerts.ts (and future sinks)
   routes/api.ts query, group-by, geo aggregation, timeseries, SSE live stream, CRUD
 web/     React + Vite + Tailwind v4 + react-globe.gl (three.js), styled with the ·modern palette (Orbital, debrief) in orange
-e2e/     Playwright screenshot smoke test (runs on every PR; screenshots are uploaded as a CI artifact)
+  policies.ts / rules.ts   rule suggestions, Pangolin rule-engine model, preview, apply/undo
+  query.ts      query language → SQL
+e2e/     Playwright smoke test of every page and the main flows (runs on every PR; screenshots are uploaded as a CI artifact)
 ```
 
 API keys are stored encrypted with AES-256-GCM, using a key derived from `APP_SECRET`. Set `APP_PASSWORD` to require a login, which you should do whenever `HOST` is not loopback.

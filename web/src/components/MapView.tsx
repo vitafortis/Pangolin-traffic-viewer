@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { Layers as LayersIcon, MapPin, X } from "lucide-react";
-import { api, filterParams, fmtNum, type EventRow, type Filters, type GeoRow, type GroupRow, type Meta, type Site, type Stats } from "../api";
-import { GLOBE, type Theme } from "../theme";
+import { api, filterParams, fmtNum, type Entity, type EventRow, type Filters, type GeoRow, type GroupRow, type Meta, type Site, type Stats } from "../api";
+import { GLOBE } from "../theme";
 import { GlobeView, type Layers } from "./GlobeView";
 import { Timeline } from "./Timeline";
 import { GroupPanel } from "./GroupPanel";
 import { EventDrawer, EventsTable } from "./EventsTable";
 import { GeoCredit } from "./GeoCredit";
+import { Splitter, useStoredSize } from "./Splitter";
 
 const DEFAULT_LAYERS: Layers = { arcs: true, countries: true, points: true, heatmap: false, live: true };
 const LAYER_LABELS: [keyof Layers, string][] = [
@@ -31,17 +32,18 @@ function Stat({ label, value, sub, tone }: { label: string; value: string; sub?:
 
 export function MapView({
     meta,
-    theme,
     filters,
     setFilters,
     tick,
     live,
     placing,
     setPlacing,
-    reloadMeta
+    reloadMeta,
+    groupBy,
+    setGroupBy,
+    onOpenEntity
 }: {
     meta: Meta | null;
-    theme: Theme;
     filters: Filters;
     setFilters: (f: Filters) => void;
     tick: number;
@@ -49,15 +51,15 @@ export function MapView({
     placing: Site | null;
     setPlacing: (s: Site | null) => void;
     reloadMeta: () => void;
+    groupBy: string;
+    setGroupBy: (g: string) => void;
+    onOpenEntity: (e: Entity) => void;
 }) {
     const [geo, setGeo] = useState<GeoRow[]>([]);
     const [byCountry, setByCountry] = useState<GroupRow[]>([]);
     const [stats, setStats] = useState<Stats | null>(null);
     const [ts, setTs] = useState<{ step: number; rows: { t: number; count: number; denied: number }[] }>({ step: 3600, rows: [] });
-    const [groupBy, setGroupBy] = useState(() => localStorage.getItem("ptv.groupBy") ?? "country");
     const [groups, setGroups] = useState<GroupRow[]>([]);
-    const [events, setEvents] = useState<EventRow[]>([]);
-    const [newIds, setNewIds] = useState<Set<number>>(new Set());
     const [openId, setOpenId] = useState<number | null>(null);
     const [layers, setLayers] = useState<Layers>(() => {
         try {
@@ -80,20 +82,14 @@ export function MapView({
             api<{ rows: GeoRow[] }>("/api/geo", { params }),
             api<{ rows: GroupRow[] }>("/api/group", { params: { ...params, by: "country", limit: "300" } }),
             api<Stats>("/api/stats", { params }),
-            api<{ step: number; rows: { t: number; count: number; denied: number }[] }>("/api/timeseries", { params: { ...params, buckets: "120" } }),
-            api<{ rows: EventRow[] }>("/api/events", { params: { ...params, limit: "300" } })
+            api<{ step: number; rows: { t: number; count: number; denied: number }[] }>("/api/timeseries", { params: { ...params, buckets: "120" } })
         ])
-            .then(([g, c, s, t, e]) => {
+            .then(([g, c, s, t]) => {
                 if (stale) return;
                 setGeo(g.rows);
                 setByCountry(c.rows);
                 setStats(s);
                 setTs(t);
-                setEvents((prev) => {
-                    const known = new Set(prev.map((x) => x.id));
-                    setNewIds(prev.length ? new Set(e.rows.filter((x) => !known.has(x.id)).map((x) => x.id)) : new Set());
-                    return e.rows;
-                });
                 setErr(null);
             })
             .catch((e) => !stale && setErr(e.message));
@@ -103,7 +99,6 @@ export function MapView({
     }, [filterKey, tick]); // eslint-disable-line react-hooks/exhaustive-deps
 
     useEffect(() => {
-        localStorage.setItem("ptv.groupBy", groupBy);
         const params = filterParams(filters);
         api<{ rows: GroupRow[] }>("/api/group", { params: { ...params, by: groupBy, limit: "200" } }).then((r) => setGroups(r.rows));
     }, [groupBy, filterKey, tick]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -117,7 +112,8 @@ export function MapView({
         if (groupBy === "country") add("countries", r.key);
         else if (groupBy === "resource") add("resources", r.key);
         else if (groupBy === "site") add("sites", r.key);
-        else if (groupBy === "ip") setFilters({ ...filters, ip: r.key });
+        else if (groupBy === "ip") onOpenEntity({ type: "ip", value: r.key });
+        else if (groupBy === "actor") onOpenEntity({ type: "actor", value: r.key });
     };
 
     const place = useCallback(
@@ -130,14 +126,21 @@ export function MapView({
         [placing, setPlacing, reloadMeta]
     );
 
+    // Desktop layout: the events panel and the group-by sidebar can be dragged larger.
+    const [bottomH, setBottomH] = useStoredSize("ptv.split.bottom", 300, 160, () => window.innerHeight - 220);
+    const [sideW, setSideW] = useStoredSize("ptv.split.side", 360, 280, () => window.innerWidth - 640);
+
     const unplaced = (meta?.sites ?? []).filter((s) => s.lat == null);
     const deniedPct = stats?.total ? Math.round(((stats.denied ?? 0) / stats.total) * 100) : 0;
 
     return (
-        <div className="grid min-h-0 flex-1 grid-cols-1 grid-rows-[minmax(55vh,1fr)_auto_auto] overflow-y-auto lg:grid-cols-[1fr_360px] lg:grid-rows-[1fr_270px] lg:overflow-hidden">
-            <div className="dot-grid relative min-h-0 overflow-hidden bg-background">
+        <div
+            className="grid min-h-0 flex-1 grid-cols-1 grid-rows-[minmax(55vh,1fr)_auto_auto] overflow-y-auto lg:grid-cols-[1fr_var(--side-w)] lg:grid-rows-[1fr_var(--bottom-h)] lg:overflow-hidden"
+            style={{ "--side-w": `${sideW}px`, "--bottom-h": `${bottomH}px` } as React.CSSProperties}
+        >
+            {/* The globe's stage is black in both themes so the traffic colours pop; panels on it stay themed. */}
+            <div className="relative min-h-0 overflow-hidden bg-black [background-image:radial-gradient(rgb(255_255_255/0.07)_1px,transparent_1px)] [background-size:18px_18px]">
                 <GlobeView
-                    theme={theme}
                     geo={geo}
                     byCountry={byCountry}
                     sites={meta?.sites ?? []}
@@ -191,11 +194,11 @@ export function MapView({
                             <span className="font-normal text-muted-foreground">mostly denied</span>
                         </span>
                         <span className="inline-flex items-center gap-1.5">
-                            <span className="size-2 rounded-full bg-foreground" /> site
+                            <span className="size-2 rounded-full bg-foreground ring-1 ring-border" /> site
                         </span>
                         {layers.countries && (
                             <span className="inline-flex items-center gap-1.5">
-                                <span className="h-2 w-10 rounded-sm" style={{ background: `linear-gradient(to right, ${GLOBE[theme].ramp.join(", ")})` }} /> traffic by country
+                                <span className="h-2 w-10 rounded-sm" style={{ background: `linear-gradient(to right, ${GLOBE.ramp.join(", ")})` }} /> traffic by country
                             </span>
                         )}
                         {unplaced.length > 0 && (
@@ -209,11 +212,13 @@ export function MapView({
                 {err && <div className="float absolute top-24 left-3 px-3 py-2 text-xs text-danger">{err}</div>}
             </div>
 
-            <aside className="flex min-h-0 flex-col border-t border-border bg-card max-lg:max-h-[480px] lg:row-span-2 lg:border-t-0 lg:border-l">
+            <aside className="relative flex min-h-0 flex-col border-t border-border bg-card max-lg:max-h-[480px] lg:row-span-2 lg:border-t-0 lg:border-l">
+                <Splitter axis="x" size={sideW} setSize={setSideW} initial={360} label="Resize group-by panel" />
                 <GroupPanel by={groupBy} setBy={setGroupBy} rows={groups} onPick={pickGroup} />
             </aside>
 
-            <section className="grid min-h-0 grid-rows-[92px_1fr] border-t border-border bg-card max-lg:min-h-[420px]">
+            <section className="relative grid min-h-0 grid-rows-[92px_1fr] border-t border-border bg-card max-lg:min-h-[420px]">
+                <Splitter axis="y" size={bottomH} setSize={setBottomH} initial={300} label="Resize events panel" />
                 <Timeline
                     rows={ts.rows}
                     step={ts.step}
@@ -221,10 +226,10 @@ export function MapView({
                     to={Number(params.to)}
                     onRange={(from, to) => setFilters({ ...filters, range: "custom", from, to })}
                 />
-                <EventsTable rows={events} newIds={newIds} onOpen={setOpenId} />
+                <EventsTable filters={filters} tick={tick} onOpenEvent={setOpenId} onOpenEntity={onOpenEntity} />
             </section>
 
-            {openId != null && <EventDrawer id={openId} attribution={meta?.geoAttribution} onClose={() => setOpenId(null)} onFilterIp={(ip) => setFilters({ ...filters, ip })} />}
+            {openId != null && <EventDrawer id={openId} attribution={meta?.geoAttribution} onClose={() => setOpenId(null)} onFilterIp={(ip) => setFilters({ ...filters, ip })} onOpenEntity={onOpenEntity} />}
         </div>
     );
 }

@@ -7,7 +7,7 @@ import type { GeometryCollection, Topology } from "topojson-specification";
 import countries110m from "world-atlas/countries-110m.json";
 import isoNumeric from "../data/iso-numeric.json";
 import { countryLabel, type EventRow, type GeoRow, type GroupRow, type Site } from "../api";
-import { GLOBE, type Theme } from "../theme";
+import { GLOBE } from "../theme";
 
 export type Layers = { arcs: boolean; countries: boolean; points: boolean; heatmap: boolean; live: boolean };
 
@@ -31,7 +31,6 @@ const COUNTRIES: Country[] = (() => {
 const isDenied = (r: { count: number; denied: number }) => r.denied / Math.max(1, r.count) > 0.5;
 
 export function GlobeView({
-    theme,
     geo,
     byCountry,
     sites,
@@ -42,7 +41,6 @@ export function GlobeView({
     onPickCountry,
     onPickSite
 }: {
-    theme: Theme;
     geo: GeoRow[];
     byCountry: GroupRow[];
     sites: Site[];
@@ -53,7 +51,7 @@ export function GlobeView({
     onPickCountry: (cc: string) => void;
     onPickSite: (site: Site) => void;
 }) {
-    const C = GLOBE[theme];
+    const C = GLOBE;
     const wrap = useRef<HTMLDivElement>(null);
     const globe = useRef<GlobeMethods | undefined>(undefined);
     const [size, setSize] = useState({ w: 800, h: 600 });
@@ -89,7 +87,7 @@ export function GlobeView({
         setRings((r) => [...r.filter((x) => t - x.born < 4000), ...fresh]);
     }, [live, layers.live]);
 
-    const material = useMemo(() => new MeshPhongMaterial({ color: C.ocean, emissive: C.ocean, emissiveIntensity: 0.55, shininess: 0 }), [C.ocean]);
+    const material = useMemo(() => new MeshPhongMaterial({ color: C.ocean, emissive: C.ocean, emissiveIntensity: 0.6, shininess: 0 }), []);
 
     const counts = useMemo(() => new Map(byCountry.filter((r) => r.key).map((r) => [r.key, r])), [byCountry]);
     const maxCountry = useMemo(() => Math.max(1, ...byCountry.map((r) => r.count)), [byCountry]);
@@ -135,7 +133,7 @@ export function GlobeView({
                 globeMaterial={material}
                 showAtmosphere
                 atmosphereColor={C.atmosphere}
-                atmosphereAltitude={0.14}
+                atmosphereAltitude={0.16}
                 onGlobeClick={({ lat, lng }) => placing && onPlace(lat, lng)}
                 // countries: flat land, shaded by traffic
                 polygonsData={COUNTRIES}

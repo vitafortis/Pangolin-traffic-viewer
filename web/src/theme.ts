@@ -26,31 +26,20 @@ export function useTheme() {
 }
 
 /**
- * Globe colours per theme. three.js can't resolve the oklch tokens, so these are the same values as
- * styles.css converted to hex. allowed/denied are the validated pair; ramp is the sequential orange
- * used to shade countries by traffic (low → high), kept quieter than `allowed` so arcs and dots stay on top.
+ * The globe sits on its own black stage in both themes: a neutral gray earth so the traffic colours
+ * carry all the hue, with a soft white rim for contrast. three.js can't resolve oklch tokens, so these
+ * are hex. allowed/denied are a validated pair on gray (orange vs magenta: ΔE 22, deutan 17); ramp
+ * shades countries by traffic from land-gray toward orange, staying below `allowed` so arcs stay on top.
  */
 export const GLOBE = {
-    light: {
-        ocean: "#f7f2f0",
-        land: "#e5deda",
-        border: "#d1c8c4",
-        atmosphere: "#e9af90",
-        allowed: "#e56900",
-        denied: "#b7005e",
-        site: "#2f241e",
-        label: "#413834",
-        ramp: ["#e5d6ce", "#e7cdbf", "#e6c2ae", "#e9b69a", "#e8a885", "#e89a6f"]
-    },
-    dark: {
-        ocean: "#130d0a",
-        land: "#261f1b",
-        border: "#3c332e",
-        atmosphere: "#b0540e",
-        allowed: "#e06d00",
-        denied: "#db2c87",
-        site: "#eee6e2",
-        label: "#d3ccc8",
-        ramp: ["#38271e", "#492c1c", "#5a3118", "#6d3714", "#813c0b", "#974300"]
-    }
+    background: "#000000",
+    ocean: "#181818",
+    land: "#484848",
+    border: "#696969",
+    atmosphere: "#ffffff",
+    allowed: "#f77f00",
+    denied: "#ed3593",
+    site: "#ffffff",
+    label: "#e8e8e8",
+    ramp: ["#604a3f", "#734e39", "#875132", "#9a5328", "#ad581f", "#bf5e1a"]
 } as const;

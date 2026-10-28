@@ -107,6 +107,43 @@ const migrations: string[] = [
         acknowledged INTEGER NOT NULL DEFAULT 0
     );
     CREATE INDEX alert_events_ts ON alert_events(ts);
+    `,
+    `
+    -- IPv4 as an integer so CIDR filters become range scans (backfilled in code below).
+    ALTER TABLE events ADD COLUMN ip_num INTEGER;
+    CREATE INDEX events_ip_num ON events(ip_num);
+
+    CREATE TABLE saved_views (
+        id INTEGER PRIMARY KEY,
+        name TEXT NOT NULL,
+        state TEXT NOT NULL,
+        created_at INTEGER NOT NULL
+    );
+
+    -- Every rule this app writes to Pangolin, so it can be shown and undone.
+    CREATE TABLE policy_actions (
+        id INTEGER PRIMARY KEY,
+        connection_id INTEGER NOT NULL REFERENCES connections(id) ON DELETE CASCADE,
+        resource_id INTEGER NOT NULL,
+        ts INTEGER NOT NULL,
+        rules TEXT NOT NULL,
+        enabled_apply_rules INTEGER NOT NULL DEFAULT 0,
+        note TEXT,
+        undone_at INTEGER
+    );
+
+    -- Stand-in for Pangolin's rule store when the connection is the demo.
+    CREATE TABLE demo_rules (
+        rule_id INTEGER PRIMARY KEY,
+        connection_id INTEGER NOT NULL REFERENCES connections(id) ON DELETE CASCADE,
+        resource_id INTEGER NOT NULL,
+        action TEXT NOT NULL,
+        match TEXT NOT NULL,
+        value TEXT NOT NULL,
+        priority INTEGER NOT NULL,
+        enabled INTEGER NOT NULL DEFAULT 1
+    );
+    ALTER TABLE resources ADD COLUMN demo_apply_rules INTEGER NOT NULL DEFAULT 0;
     `
 ];
 
@@ -121,6 +158,21 @@ for (let v = current; v < migrations.length; v++) {
         db.exec("ROLLBACK");
         throw e;
     }
+}
+
+export function ipv4ToNum(ip: string | null | undefined): number | null {
+    const m = ip?.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+    if (!m) return null;
+    const o = m.slice(1).map(Number);
+    return o.some((x) => x > 255) ? null : ((o[0] * 256 + o[1]) * 256 + o[2]) * 256 + o[3];
+}
+
+if (current < 2) {
+    const rows = db.prepare("SELECT id, ip FROM events WHERE ip_num IS NULL AND ip LIKE '%.%.%.%'").all() as { id: number; ip: string }[];
+    const upd = db.prepare("UPDATE events SET ip_num = ? WHERE id = ?");
+    db.exec("BEGIN");
+    for (const r of rows) upd.run(ipv4ToNum(r.ip), r.id);
+    db.exec("COMMIT");
 }
 
 export function tx<T>(fn: () => T): T {

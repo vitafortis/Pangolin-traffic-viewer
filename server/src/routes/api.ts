@@ -5,7 +5,7 @@ import { encrypt } from "../crypto.ts";
 import { bus } from "../bus.ts";
 import { config } from "../config.ts";
 import { countryName, geoAttribution, geoEnabled, lookup } from "../geo.ts";
-import { buildWhere, GROUPS, JOINS, type Filters } from "../query.ts";
+import { buildWhere, EVENT_COLUMNS, GROUPS, JOINS, orderBy, type Filters } from "../query.ts";
 import { clientFor, pollConnection, startPolling, stopPolling, syncInventory, type ConnectionRow } from "../ingest.ts";
 import { ConditionsSchema, RuleInputSchema, compileRule, matches, reloadRules } from "../alerts.ts";
 import type { TrafficEvent } from "../events.ts";
@@ -41,19 +41,13 @@ export async function apiRoutes(app: FastifyInstance) {
     });
 
     // ---- events ----------------------------------------------------------
-    app.get<{ Querystring: Filters & { limit?: string; before?: string } }>("/api/events", async (req) => {
+    app.get<{ Querystring: Filters & { limit?: string; offset?: string; sort?: string; dir?: string } }>("/api/events", async (req) => {
         const w = buildWhere(req.query);
         const limit = Math.min(Number(req.query.limit ?? 200), 2000);
-        let sql = w.sql;
-        if (req.query.before) {
-            sql += " AND e.id < ?";
-            w.params.push(Number(req.query.before));
-        }
+        const offset = Math.max(0, Number(req.query.offset ?? 0));
         const rows = db.prepare(`
-            SELECT e.id, e.connection_id, e.kind, e.ts, e.allowed, e.reason, e.ip, e.country, e.city, e.lat, e.lon,
-                   e.resource_id, COALESCE(r.name, e.resource_name) AS resource_name, e.site_id, s.name AS site_name,
-                   e.actor, e.actor_type, e.host, e.path, e.method, e.protocol, e.user_agent, e.bytes_tx, e.bytes_rx
-            FROM events e ${JOINS} WHERE ${sql} ORDER BY e.ts DESC, e.id DESC LIMIT ?`).all(...w.params, limit);
+            SELECT ${EVENT_COLUMNS} FROM events e ${JOINS} WHERE ${w.sql}
+            ORDER BY ${orderBy(req.query.sort, req.query.dir)} LIMIT ? OFFSET ?`).all(...w.params, limit, offset);
         return { rows };
     });
 
