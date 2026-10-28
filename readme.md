@@ -1,6 +1,6 @@
 # Pangolin Traffic Viewer
 
-See who is reaching your [Pangolin](https://pangolin.net) resources, and from where. The app pulls traffic logs from Pangolin Cloud (or a self-hosted Integration API) and plots them on a 3D globe as arcs and a heatmap. You can search, filter and group the traffic, and set alerts on location, time, IP and volume.
+See who is reaching your [Pangolin](https://pangolin.net) resources, and from where. The app pulls traffic logs from Pangolin Cloud (or a self-hosted Integration API) and plots them on a 3D globe: arcs from origin to site, countries shaded by traffic, and origin dots, with light and dark themes. You can search, filter and group the traffic, and set alerts on location, time, IP and volume.
 
 ## Deploy with Docker
 
@@ -89,7 +89,8 @@ server/  Fastify + node:sqlite (no native deps)
   ingest.ts     per-connection pollers → events.ts (normalize + geo) → SQLite
   bus.ts        in-process fan-out of new events → alerts.ts (and future sinks)
   routes/api.ts query, group-by, geo aggregation, timeseries, SSE live stream, CRUD
-web/     React + Vite + react-globe.gl (three.js)
+web/     React + Vite + Tailwind v4 + react-globe.gl (three.js), styled with the ·modern palette (Orbital, debrief) in orange
+e2e/     Playwright screenshot smoke test (runs on every PR; screenshots are uploaded as a CI artifact)
 ```
 
 API keys are stored encrypted with AES-256-GCM, using a key derived from `APP_SECRET`. Set `APP_PASSWORD` to require a login, which you should do whenever `HOST` is not loopback.
@@ -102,4 +103,4 @@ API keys are stored encrypted with AES-256-GCM, using a key derived from `APP_SE
 
 ## License
 
-[MIT](LICENSE). Bundled and downloaded data has its own terms: the optional DB-IP City Lite database is [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) ([IP Geolocation by DB-IP](https://db-ip.com)), and the globe textures come from [three-globe](https://github.com/vasturiano/three-globe) (MIT; NASA imagery).
+[MIT](LICENSE). Bundled and downloaded data has its own terms: the optional DB-IP City Lite database is [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) ([IP Geolocation by DB-IP](https://db-ip.com)), and country outlines come from [world-atlas](https://github.com/topojson/world-atlas) (Natural Earth, public domain).

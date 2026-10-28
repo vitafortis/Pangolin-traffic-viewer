@@ -1,0 +1,35 @@
+name: UI smoke test
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  screenshots:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build --workspace web
+      - name: Start server in demo mode
+        run: |
+          DEMO=1 DATA_DIR=$RUNNER_TEMP/ptv npm start > $RUNNER_TEMP/server.log 2>&1 &
+          for i in $(seq 1 60); do curl -sf http://127.0.0.1:8787/api/health && break; sleep 1; done
+          sleep 5
+      - run: node e2e/screenshots.mjs
+      - if: always()
+        run: cat $RUNNER_TEMP/server.log
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: e2e/out/
+          retention-days: 14

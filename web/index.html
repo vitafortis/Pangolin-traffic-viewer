@@ -1,10 +1,20 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Pangolin Traffic Viewer</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='13' fill='none' stroke='%233987e5' stroke-width='3'/><path d='M5 16h22M16 3c5 5 5 21 0 26M16 3c-5 5-5 21 0 26' stroke='%233987e5' stroke-width='2' fill='none'/></svg>" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#fdfbfa" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0b0706" />
+    <title>Pangolin Traffic</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <!-- Before paint: the saved theme, else the system's. -->
+    <script>
+      try {
+        var t = localStorage.getItem("ptv-theme");
+        if (t !== "light" && t !== "dark") t = matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+        document.documentElement.dataset.theme = t;
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

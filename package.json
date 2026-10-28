@@ -1,9 +1,13 @@
 {
   "name": "pangolin-traffic-viewer",
   "private": true,
+  "version": "0.2.0",
   "license": "MIT",
   "type": "module",
-  "workspaces": ["server", "web"],
+  "workspaces": [
+    "server",
+    "web"
+  ],
   "scripts": {
     "dev": "npm run dev --workspace server & npm run dev --workspace web",
     "build": "npm run build --workspace web && npm run typecheck --workspace server",
@@ -11,5 +15,8 @@
     "demo": "DEMO=1 npm run start --workspace server",
     "geoip:download": "tsx --env-file-if-exists=.env server/src/geoipDownload.ts",
     "typecheck": "npm run typecheck --workspaces"
+  },
+  "devDependencies": {
+    "playwright": "^1.64.1"
   }
 }
