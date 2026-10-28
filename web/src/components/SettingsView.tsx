@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { ago, api, type Connection, type Meta, type Site } from "../api";
+import { GeoCredit } from "./GeoCredit";
 
 type ConnDraft = { id?: number; name: string; base_url: string; org_id: string; api_key: string; poll_interval_s: number; enabled: boolean };
 type TestResult = { ok: boolean; error?: string; sites?: number; resources?: number; logs?: Record<string, string> };
@@ -243,7 +244,9 @@ export function SettingsView({ meta, reload, onPlace }: { meta: Meta | null; rel
                     </div>
                     <div className="body">
                         {meta?.geoip ? (
-                            <span className="ok">City-level GeoIP database loaded.</span>
+                            <>
+                                <span className="ok">City-level GeoIP database loaded.</span> <GeoCredit attribution={meta?.geoAttribution} />
+                            </>
                         ) : (
                             <>
                                 <span>Using Pangolin's country codes only, so origins are placed at country centroids.</span>

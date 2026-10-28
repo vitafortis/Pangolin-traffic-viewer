@@ -43,6 +43,14 @@ export function geoEnabled() {
     return reader !== null;
 }
 
+/** Credit required by the loaded database's license (DB-IP Lite and GeoLite2 both require one). */
+export function geoAttribution(): { text: string; url: string } | null {
+    const type = reader?.metadata.databaseType ?? "";
+    if (type.startsWith("DBIP")) return { text: "IP Geolocation by DB-IP", url: "https://db-ip.com" };
+    if (type.startsWith("GeoLite2")) return { text: "This product includes GeoLite2 data created by MaxMind", url: "https://www.maxmind.com" };
+    return null;
+}
+
 /** Strips ports / brackets from "1.2.3.4:5678" or "[::1]:5678". */
 export function cleanIp(raw: string | null | undefined): string | null {
     if (!raw) return null;

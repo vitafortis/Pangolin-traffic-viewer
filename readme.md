@@ -53,7 +53,7 @@ Pangolin includes a country code for each request, so by default origins are pla
 npm run geoip:download   # DB-IP City Lite (CC BY 4.0) → data/geo/
 ```
 
-You can also put a MaxMind `GeoLite2-City.mmdb` in `data/geo/`. Restart the server after adding either database. In Docker, `GEOIP_AUTO_DOWNLOAD=1` does this for you. The DB-IP data is licensed [CC BY 4.0](https://db-ip.com/db/lite.php), which requires attribution to DB-IP.
+You can also put a MaxMind `GeoLite2-City.mmdb` in `data/geo/`. Restart the server after adding either database. In Docker, `GEOIP_AUTO_DOWNLOAD=1` does this for you. The DB-IP data is licensed [CC BY 4.0](https://db-ip.com/db/lite.php). When it is loaded, the UI shows the required "IP Geolocation by DB-IP" link on every page that displays location results, and webhook payloads include a `geoAttribution` field. A GeoLite2 database gets MaxMind's required credit in the same places.
 
 ### Site locations
 
@@ -99,3 +99,7 @@ API keys are stored encrypted with AES-256-GCM, using a key derived from `APP_SE
 - **SIEM streaming:** add a sink that subscribes to `bus.on("events")` and forwards to syslog/CEF, Splunk HEC, Elastic, etc. Pangolin also exposes `/org/{orgId}/event-streaming-destination` natively, which may cover some setups.
 - Update `connection` events in place when sessions end (bytes, `endedAt`).
 - Email/PagerDuty alert channels.
+
+## License
+
+[MIT](LICENSE). Bundled and downloaded data has its own terms: the optional DB-IP City Lite database is [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) ([IP Geolocation by DB-IP](https://db-ip.com)), and the globe textures come from [three-globe](https://github.com/vasturiano/three-globe) (MIT; NASA imagery).

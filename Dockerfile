@@ -26,6 +26,7 @@ ARG VERSION=dev
 LABEL org.opencontainers.image.title="Pangolin Traffic Viewer" \
       org.opencontainers.image.description="Globe visualization, search and alerting for Pangolin traffic logs" \
       org.opencontainers.image.source="https://github.com/vitafortis/Pangolin-traffic-viewer" \
+      org.opencontainers.image.licenses="MIT" \
       org.opencontainers.image.version="${VERSION}"
 
 ENV NODE_ENV=production \

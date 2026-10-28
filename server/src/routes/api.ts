@@ -4,7 +4,7 @@ import { db, now } from "../db.ts";
 import { encrypt } from "../crypto.ts";
 import { bus } from "../bus.ts";
 import { config } from "../config.ts";
-import { countryName, geoEnabled, lookup } from "../geo.ts";
+import { countryName, geoAttribution, geoEnabled, lookup } from "../geo.ts";
 import { buildWhere, GROUPS, JOINS, type Filters } from "../query.ts";
 import { clientFor, pollConnection, startPolling, stopPolling, syncInventory, type ConnectionRow } from "../ingest.ts";
 import { ConditionsSchema, RuleInputSchema, compileRule, matches, reloadRules } from "../alerts.ts";
@@ -37,7 +37,7 @@ export async function apiRoutes(app: FastifyInstance) {
         const countries = (db.prepare("SELECT DISTINCT country FROM events WHERE country IS NOT NULL ORDER BY country").all() as { country: string }[]).map(
             (r) => ({ code: r.country, name: countryName(r.country) })
         );
-        return { connections, sites, resources, countries, geoip: geoEnabled(), demo: config.demo };
+        return { connections, sites, resources, countries, geoip: geoEnabled(), geoAttribution: geoAttribution(), demo: config.demo };
     });
 
     // ---- events ----------------------------------------------------------
@@ -193,7 +193,7 @@ export async function apiRoutes(app: FastifyInstance) {
     });
 
     /** Helper for placing a site: geolocate a public IP (e.g. the site's WAN address). */
-    app.get<{ Querystring: { ip: string } }>("/api/geoip", async (req) => lookup(req.query.ip));
+    app.get<{ Querystring: { ip: string } }>("/api/geoip", async (req) => ({ ...lookup(req.query.ip), attribution: geoAttribution() }));
 
     // ---- alerts ----------------------------------------------------------
     app.get("/api/alerts/rules", async () => {

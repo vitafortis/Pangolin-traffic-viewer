@@ -2,7 +2,7 @@ import { BlockList, isIPv6 } from "node:net";
 import { z } from "zod";
 import { db, now } from "./db.ts";
 import { bus } from "./bus.ts";
-import { countryName } from "./geo.ts";
+import { countryName, geoAttribution } from "./geo.ts";
 import type { TrafficEvent } from "./events.ts";
 
 const ScheduleSchema = z.object({
@@ -217,7 +217,7 @@ function fire(r: CompiledRule, key: string, evts: TrafficEvent[], count: number)
     bus.emit("alert", { id, ruleId: r.id, ruleName: r.name, ts: now(), count, summary });
     console.log(`[alerts] ${summary}`);
     if (r.channelList.length) {
-        const payload = { source: "pangolin-traffic-viewer", alertId: id, rule: { id: r.id, name: r.name }, group: key, count, summary, samples };
+        const payload = { source: "pangolin-traffic-viewer", alertId: id, rule: { id: r.id, name: r.name }, group: key, count, summary, samples, geoAttribution: geoAttribution() };
         deliver(r.channelList, summary, payload).then((d) => db.prepare("UPDATE alert_events SET delivery = ? WHERE id = ?").run(d, id));
     }
 }

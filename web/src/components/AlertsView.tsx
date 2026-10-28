@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { ago, api, fmtTime, type AlertEvent, type Channel, type Conditions, type Kind, type Meta, type Rule } from "../api";
 import { MultiSelect } from "./MultiSelect";
+import { GeoCredit } from "./GeoCredit";
 
 type Draft = Omit<Rule, "id" | "last_fired_at"> & { id?: number };
 
@@ -138,6 +139,7 @@ export function AlertsView({ meta, onAck }: { meta: Meta | null; onAck: () => vo
                         </div>
                     ))}
                 </div>
+                <GeoCredit className="page-credit" attribution={meta?.geoAttribution} />
             </div>
         </div>
     );

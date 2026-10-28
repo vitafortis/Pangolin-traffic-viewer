@@ -164,8 +164,15 @@ h2 { font-size: 16px; margin: 0; font-weight: 600; }
     .side { grid-row: auto; grid-column: 1; border-left: 0; border-top: 1px solid var(--border); max-height: 480px; }
     .stats { flex-wrap: wrap; right: 12px; }
     .stat { min-width: 0; padding: 6px 8px; }
-    .layers { top: auto; bottom: 52px; }
+    .layers { top: 92px; }
+    .legend { bottom: 30px; right: 12px; flex-wrap: wrap; }
+    .overlay.geo-credit { bottom: 6px; right: 6px; }
     .search { width: 100%; }
     .form { grid-template-columns: 1fr; }
     header.top { flex-wrap: wrap; }
 }
+
+.geo-credit { font-size: 11px; color: var(--text-muted); text-decoration: none; }
+.geo-credit:hover { color: var(--text-secondary); text-decoration: underline; }
+.overlay.geo-credit { bottom: 12px; right: 12px; background: rgba(18, 21, 28, 0.7); padding: 2px 8px; border-radius: 4px; }
+.page-credit { text-align: center; }

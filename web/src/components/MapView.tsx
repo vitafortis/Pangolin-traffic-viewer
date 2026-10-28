@@ -4,6 +4,7 @@ import { GlobeView, type Layers } from "./GlobeView";
 import { Timeline } from "./Timeline";
 import { GroupPanel } from "./GroupPanel";
 import { EventDrawer, EventsTable } from "./EventsTable";
+import { GeoCredit } from "./GeoCredit";
 
 export function MapView({
     meta,
@@ -173,6 +174,7 @@ export function MapView({
                         )}
                     </div>
                 )}
+                <GeoCredit className="overlay" attribution={meta?.geoAttribution} />
                 {err && (
                     <div className="overlay" style={{ top: 80, left: 12 }}>
                         <span className="err">{err}</span>
@@ -192,7 +194,7 @@ export function MapView({
                 />
                 <EventsTable rows={events} newIds={newIds} onOpen={setOpenId} />
             </div>
-            {openId != null && <EventDrawer id={openId} onClose={() => setOpenId(null)} onFilterIp={(ip) => setFilters({ ...filters, ip })} />}
+            {openId != null && <EventDrawer id={openId} attribution={meta?.geoAttribution} onClose={() => setOpenId(null)} onFilterIp={(ip) => setFilters({ ...filters, ip })} />}
         </div>
     );
 }

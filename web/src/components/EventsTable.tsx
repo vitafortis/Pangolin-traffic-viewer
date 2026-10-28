@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { api, countryLabel, flag, fmtTime, type EventRow } from "../api";
+import { api, countryLabel, flag, fmtTime, type EventRow, type GeoAttribution } from "../api";
+import { GeoCredit } from "./GeoCredit";
 
 export function Verdict({ allowed }: { allowed: number | null }) {
     return allowed === 1 ? <span className="verdict allow">allow</span> : allowed === 0 ? <span className="verdict deny">deny</span> : <span className="verdict na">—</span>;
@@ -54,7 +55,7 @@ export function EventsTable({ rows, newIds, onOpen }: { rows: EventRow[]; newIds
     );
 }
 
-export function EventDrawer({ id, onClose, onFilterIp }: { id: number; onClose: () => void; onFilterIp: (ip: string) => void }) {
+export function EventDrawer({ id, attribution, onClose, onFilterIp }: { id: number; attribution: GeoAttribution | null | undefined; onClose: () => void; onFilterIp: (ip: string) => void }) {
     const [ev, setEv] = useState<(EventRow & { raw: unknown }) | null>(null);
     useEffect(() => {
         api<EventRow & { raw: unknown }>(`/api/events/${id}`).then(setEv);
@@ -95,6 +96,9 @@ export function EventDrawer({ id, onClose, onFilterIp }: { id: number; onClose: 
                             <dd>
                                 {flag(ev.country)} {[ev.city, countryLabel(ev.country)].filter(Boolean).join(", ")}
                                 {ev.lat != null && <span className="muted"> ({ev.lat.toFixed(2)}, {ev.lon!.toFixed(2)})</span>}
+                                <div>
+                                    <GeoCredit attribution={attribution} />
+                                </div>
                             </dd>
                             <dt>Resource</dt>
                             <dd>{ev.resource_name ?? ev.resource_id ?? "—"}</dd>

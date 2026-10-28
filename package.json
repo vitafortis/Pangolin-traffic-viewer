@@ -1,6 +1,7 @@
 {
   "name": "pangolin-traffic-viewer",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "workspaces": ["server", "web"],
   "scripts": {

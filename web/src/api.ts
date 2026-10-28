@@ -67,7 +67,16 @@ export type Connection = {
 };
 export type Site = { connection_id: number; site_id: number; name: string; nice_id: string; type: string; online: number; lat: number | null; lon: number | null; place_label: string | null };
 export type Resource = { connection_id: number; resource_id: number; name: string; full_domain: string | null; site_ids: number[] };
-export type Meta = { connections: Connection[]; sites: Site[]; resources: Resource[]; countries: { code: string; name: string }[]; geoip: boolean; demo: boolean };
+export type GeoAttribution = { text: string; url: string };
+export type Meta = {
+    connections: Connection[];
+    sites: Site[];
+    resources: Resource[];
+    countries: { code: string; name: string }[];
+    geoip: boolean;
+    geoAttribution: GeoAttribution | null;
+    demo: boolean;
+};
 
 export type EventRow = {
     id: number;
