@@ -28,7 +28,7 @@ for (const theme of ["dark", "light"]) {
             await page.goto(`${base}/#map`);
             await page.reload();
             await page.waitForTimeout(4000);
-            await page.locator("table.grid tbody tr.click").last().click();
+            await page.locator("table.data-table tbody tr.click").last().click();
             await page.waitForTimeout(800);
             await page.screenshot({ path: `${out}${theme}-desktop-event.png` });
         }

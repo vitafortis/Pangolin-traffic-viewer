@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { ago, api, fmtTime, type AlertEvent, type Channel, type Conditions, type Kind, type Meta, type Rule } from "../api";
-import { TriangleAlert } from "lucide-react";
+import { Plus, TriangleAlert } from "lucide-react";
 import { MultiSelect } from "./MultiSelect";
 import { GeoCredit } from "./GeoCredit";
 
@@ -55,7 +55,7 @@ export function AlertsView({ meta, onAck }: { meta: Meta | null; onAck: () => vo
                                 ))}
                             </select>
                         </div>
-                        <div className="overflow-x-auto"><table className="grid">
+                        <div className="overflow-x-auto"><table className="data-table">
                             <thead>
                                 <tr>
                                     <th>Name</th>
@@ -325,7 +325,7 @@ function RuleEditor({ meta, draft, setDraft, onSaved }: { meta: Meta | null; dra
                     ))}
                     <div>
                         <button className="btn btn-secondary btn-sm" onClick={() => setDraft({ ...draft, channels: [...draft.channels, { type: "webhook", url: "", format: "slack" }] })}>
-                            + Add webhook
+                            <Plus /> Add webhook
                         </button>
                     </div>
                 </div>

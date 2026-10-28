@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Plus } from "lucide-react";
 import { ago, api, type Connection, type Meta, type Site } from "../api";
 import { GeoCredit } from "./GeoCredit";
 
@@ -71,7 +72,7 @@ export function SettingsView({ meta, reload, onPlace }: { meta: Meta | null; rel
                         <h3 className="text-[0.9375rem] font-semibold">Pangolin connections</h3>
                         <span className="flex-1" />
                         <button className="btn btn-primary btn-sm" onClick={() => edit()}>
-                            + Add connection
+                            <Plus /> Add connection
                         </button>
                     </div>
                     {draft && (
@@ -131,7 +132,7 @@ export function SettingsView({ meta, reload, onPlace }: { meta: Meta | null; rel
                             )}
                         </div>
                     )}
-                    <div className="overflow-x-auto"><table className="grid">
+                    <div className="overflow-x-auto"><table className="data-table">
                         <thead>
                             <tr>
                                 <th>Name</th>
@@ -192,7 +193,7 @@ export function SettingsView({ meta, reload, onPlace }: { meta: Meta | null; rel
                         <h3 className="text-[0.9375rem] font-semibold">Site locations</h3>
                         <span className="text-xs text-muted-foreground">Pangolin doesn't know where your sites are. Place them so traffic arcs have a destination.</span>
                     </div>
-                    <div className="overflow-x-auto"><table className="grid">
+                    <div className="overflow-x-auto"><table className="data-table">
                         <thead>
                             <tr>
                                 <th>Site</th>

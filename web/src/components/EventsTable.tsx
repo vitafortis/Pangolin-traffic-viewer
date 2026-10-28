@@ -10,7 +10,7 @@ export function Verdict({ allowed }: { allowed: number | null }) {
 export function EventsTable({ rows, newIds, onOpen }: { rows: EventRow[]; newIds: Set<number>; onOpen: (id: number) => void }) {
     return (
         <div className="min-h-0 overflow-auto">
-            <table className="grid">
+            <table className="data-table">
                 <thead>
                     <tr>
                         <th>Time</th>

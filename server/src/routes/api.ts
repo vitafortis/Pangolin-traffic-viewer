@@ -249,6 +249,8 @@ export async function apiRoutes(app: FastifyInstance) {
     // ---- live stream (SSE) -------------------------------------------------
     app.get("/api/stream", (req, reply) => {
         reply.raw.writeHead(200, { "Content-Type": "text/event-stream", "Cache-Control": "no-cache", Connection: "keep-alive", "X-Accel-Buffering": "no" });
+        // Node holds headers until the first body write; send one now so EventSource opens immediately.
+        reply.raw.write(": connected\n\n");
         const send = (type: string, data: unknown) => reply.raw.write(`event: ${type}\ndata: ${JSON.stringify(data)}\n\n`);
         const onEvents = (evts: TrafficEvent[]) =>
             send("events", evts.slice(-200).map(({ raw: _r, user_agent: _u, ...e }) => e));

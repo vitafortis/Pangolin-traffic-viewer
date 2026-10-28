@@ -223,22 +223,22 @@
 	}
 
 	/* Data tables. */
-	table.grid {
+	table.data-table {
 		@apply w-full border-collapse text-[0.8125rem];
 	}
-	table.grid th {
+	table.data-table th {
 		@apply sticky top-0 z-[1] border-b border-border bg-card px-3 py-2 text-left text-[0.6875rem] font-medium tracking-wider whitespace-nowrap text-muted-foreground uppercase;
 	}
-	table.grid td {
+	table.data-table td {
 		@apply max-w-[260px] overflow-hidden border-b border-border/60 px-3 py-1.5 text-ellipsis whitespace-nowrap;
 	}
-	table.grid tr.click {
+	table.data-table tr.click {
 		@apply cursor-pointer;
 	}
-	table.grid tr.click:hover td {
+	table.data-table tr.click:hover td {
 		@apply bg-accent/60;
 	}
-	table.grid tr.new td {
+	table.data-table tr.new td {
 		animation: flash 1.6s ease-out;
 	}
 

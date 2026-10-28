@@ -29,7 +29,7 @@ export function GroupPanel({ by, setBy, rows, onPick }: { by: string; setBy: (b:
                 </select>
             </div>
             <div className="min-h-0 flex-1 overflow-auto">
-                <table className="grid">
+                <table className="data-table">
                     <thead>
                         <tr>
                             <th>{GROUP_OPTIONS.find((g) => g[0] === by)?.[1]}</th>

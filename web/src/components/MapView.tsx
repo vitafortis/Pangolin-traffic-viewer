@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
-import { MapPin, X } from "lucide-react";
+import { Layers as LayersIcon, MapPin, X } from "lucide-react";
 import { api, filterParams, fmtNum, type EventRow, type Filters, type GeoRow, type GroupRow, type Meta, type Site, type Stats } from "../api";
-import type { Theme } from "../theme";
+import { GLOBE, type Theme } from "../theme";
 import { GlobeView, type Layers } from "./GlobeView";
 import { Timeline } from "./Timeline";
 import { GroupPanel } from "./GroupPanel";
@@ -19,11 +19,11 @@ const LAYER_LABELS: [keyof Layers, string][] = [
 
 function Stat({ label, value, sub, tone }: { label: string; value: string; sub?: string; tone?: "denied" }) {
     return (
-        <div className="float min-w-24 px-3 py-2">
-            <div className={`text-lg font-semibold tabular-nums ${tone === "denied" && value !== "0" ? "text-denied" : ""}`}>{value}</div>
-            <div className="section-title">
+        <div className="float min-w-0 flex-1 px-2.5 py-1.5 sm:min-w-24 sm:flex-none sm:px-3 sm:py-2">
+            <div className={`text-base font-semibold tabular-nums sm:text-lg ${tone === "denied" && value !== "0" ? "text-denied" : ""}`}>{value}</div>
+            <div className="section-title truncate max-sm:text-[0.625rem]">
                 {label}
-                {sub && <span className="normal-case"> · {sub}</span>}
+                {sub && <span className="normal-case max-sm:hidden"> · {sub}</span>}
             </div>
         </div>
     );
@@ -67,6 +67,7 @@ export function MapView({
         }
     });
     const [err, setErr] = useState<string | null>(null);
+    const [layersOpen, setLayersOpen] = useState(() => matchMedia("(min-width: 640px)").matches);
 
     // Relative ranges resolve "now" at fetch time, so key effects on the filter object, not the resolved params.
     const filterKey = JSON.stringify(filters);
@@ -148,21 +149,27 @@ export function MapView({
                     onPickSite={(s) => add("sites", `${s.connection_id}:${s.site_id}`)}
                 />
 
-                <div className="pointer-events-none absolute top-3 right-3 left-3 flex flex-wrap gap-2 [&>*]:pointer-events-auto">
+                <div className="pointer-events-none absolute top-3 left-3 flex gap-1.5 max-sm:right-3 sm:gap-2 [&>*]:pointer-events-auto">
                     <Stat label="Events" value={fmtNum(stats?.total)} />
                     <Stat label="Denied" value={fmtNum(stats?.denied)} sub={`${deniedPct}%`} tone="denied" />
                     <Stat label="Unique IPs" value={fmtNum(stats?.unique_ips)} />
                     <Stat label="Countries" value={fmtNum(stats?.countries)} />
                 </div>
 
-                <div className="float absolute right-3 bottom-10 space-y-1 px-3 py-2.5 sm:top-3 sm:bottom-auto" role="group" aria-label="Map layers">
-                    <div className="section-title mb-1.5">Layers</div>
-                    {LAYER_LABELS.map(([k, l]) => (
-                        <label key={k} className="flex cursor-pointer items-center gap-2 text-xs text-muted-foreground hover:text-foreground">
-                            <input type="checkbox" className="accent-[var(--primary)]" checked={layers[k]} onChange={(e) => setLayers({ ...layers, [k]: e.target.checked })} />
-                            {l}
-                        </label>
-                    ))}
+                <div className="float absolute top-[72px] right-3 sm:top-3" role="group" aria-label="Map layers">
+                    <button className="section-title flex w-full items-center gap-1.5 px-3 py-2 hover:text-foreground" onClick={() => setLayersOpen(!layersOpen)} aria-expanded={layersOpen}>
+                        <LayersIcon className="size-3.5" /> Layers
+                    </button>
+                    {layersOpen && (
+                        <div className="space-y-1 px-3 pb-2.5">
+                            {LAYER_LABELS.map(([k, l]) => (
+                                <label key={k} className="flex cursor-pointer items-center gap-2 text-xs text-muted-foreground hover:text-foreground">
+                                    <input type="checkbox" className="accent-[var(--primary)]" checked={layers[k]} onChange={(e) => setLayers({ ...layers, [k]: e.target.checked })} />
+                                    {l}
+                                </label>
+                            ))}
+                        </div>
+                    )}
                 </div>
 
                 {placing ? (
@@ -188,7 +195,7 @@ export function MapView({
                         </span>
                         {layers.countries && (
                             <span className="inline-flex items-center gap-1.5">
-                                <span className="h-2 w-10 rounded-sm bg-gradient-to-r from-primary/15 to-primary" /> traffic by country
+                                <span className="h-2 w-10 rounded-sm" style={{ background: `linear-gradient(to right, ${GLOBE[theme].ramp.join(", ")})` }} /> traffic by country
                             </span>
                         )}
                         {unplaced.length > 0 && (
