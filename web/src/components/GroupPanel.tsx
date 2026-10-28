@@ -29,7 +29,13 @@ export function GroupPanel({ by, setBy, rows, onPick }: { by: string; setBy: (b:
                 </select>
             </div>
             <div className="min-h-0 flex-1 overflow-auto">
-                <table className="data-table">
+                <table className="data-table table-fixed">
+                    <colgroup>
+                        <col />
+                        <col className="w-[68px]" />
+                        <col className="w-[60px]" />
+                        <col className="w-[56px]" />
+                    </colgroup>
                     <thead>
                         <tr>
                             <th>{GROUP_OPTIONS.find((g) => g[0] === by)?.[1]}</th>
@@ -41,7 +47,7 @@ export function GroupPanel({ by, setBy, rows, onPick }: { by: string; setBy: (b:
                     <tbody>
                         {rows.map((r) => (
                             <tr key={r.key ?? "null"} className={pickable ? "click" : ""} onClick={() => pickable && onPick(r)} title={`${r.label ?? "—"} · last seen ${ago(r.last_ts)}${pickable ? " · click to filter" : ""}`}>
-                                <td className="relative max-w-[170px]">
+                                <td className="relative max-w-none">
                                     {/* Share of the largest row; the denied share sits at its right end. */}
                                     <div className="absolute inset-y-1 left-0 flex overflow-hidden rounded-r-[4px]" style={{ width: `${(r.count / max) * 100}%` }}>
                                         <div className="flex-1 bg-primary-soft" />

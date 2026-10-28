@@ -22,7 +22,9 @@ for (const theme of ["dark", "light"]) {
             await page.goto(`${base}/#${tab}`);
             await page.reload();
             await page.waitForTimeout(tab === "map" ? 6000 : 1500);
-            await page.screenshot({ path: `${out}${theme}-${device}-${tab}.png`, fullPage: device === "phone" });
+            // Viewport capture first: a full-page capture resizes the viewport, which re-renders the WebGL globe.
+            await page.screenshot({ path: `${out}${theme}-${device}-${tab}.png` });
+            if (device === "phone") await page.screenshot({ path: `${out}${theme}-${device}-${tab}-full.png`, fullPage: true });
         }
         if (device === "desktop") {
             await page.goto(`${base}/#map`);
