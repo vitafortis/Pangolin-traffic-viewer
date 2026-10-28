@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Plus } from "lucide-react";
 import { ago, api, type Connection, type Meta, type Site } from "../api";
 import { GeoCredit } from "./GeoCredit";
 
@@ -64,62 +65,62 @@ export function SettingsView({ meta, reload, onPlace }: { meta: Meta | null; rel
     };
 
     return (
-        <div className="page">
-            <div className="page-inner">
+        <div className="min-h-0 flex-1 overflow-auto">
+            <div className="mx-auto flex max-w-5xl flex-col gap-5 p-4 md:p-6">
                 <div className="card">
-                    <div className="panel-h">
-                        <h3>Pangolin connections</h3>
-                        <span className="spacer" />
-                        <button className="btn primary" onClick={() => edit()}>
-                            + Add connection
+                    <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-3">
+                        <h3 className="text-[0.9375rem] font-semibold">Pangolin connections</h3>
+                        <span className="flex-1" />
+                        <button className="btn btn-primary btn-sm" onClick={() => edit()}>
+                            <Plus /> Add connection
                         </button>
                     </div>
                     {draft && (
-                        <div className="body form" style={{ borderBottom: "1px solid var(--border)" }}>
-                            <label className="l">Name</label>
+                        <div className="grid grid-cols-1 items-center gap-x-4 gap-y-3 border-b border-border p-4 md:grid-cols-[160px_1fr]">
+                            <label className="text-[0.8125rem] text-muted-foreground">Name</label>
                             <input className="input" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} placeholder="Production org" />
-                            <label className="l">API base URL</label>
+                            <label className="text-[0.8125rem] text-muted-foreground">API base URL</label>
                             <div>
-                                <input className="input" style={{ width: "100%" }} value={draft.base_url} onChange={(e) => setDraft({ ...draft, base_url: e.target.value })} />
-                                <div className="hint">Pangolin Cloud: {DEFAULT_URL}. Self-hosted: your Integration API URL, e.g. https://api.example.com/v1</div>
+                                <input className="input w-full" value={draft.base_url} onChange={(e) => setDraft({ ...draft, base_url: e.target.value })} />
+                                <div className="text-xs text-muted-foreground">Pangolin Cloud: {DEFAULT_URL}. Self-hosted: your Integration API URL, e.g. https://api.example.com/v1</div>
                             </div>
-                            <label className="l">Organization ID</label>
+                            <label className="text-[0.8125rem] text-muted-foreground">Organization ID</label>
                             <input className="input" value={draft.org_id} onChange={(e) => setDraft({ ...draft, org_id: e.target.value })} placeholder="my-org" />
-                            <label className="l">API key</label>
+                            <label className="text-[0.8125rem] text-muted-foreground">API key</label>
                             <div>
-                                <input className="input" style={{ width: "100%" }} type="password" autoComplete="off" value={draft.api_key} onChange={(e) => setDraft({ ...draft, api_key: e.target.value })} placeholder={draft.id ? "(unchanged)" : "Org API key"} />
-                                <div className="hint">Create in Pangolin → Organization → API Keys. Grant read access to logs, sites, and resources. Stored encrypted.</div>
+                                <input className="input w-full" type="password" autoComplete="off" value={draft.api_key} onChange={(e) => setDraft({ ...draft, api_key: e.target.value })} placeholder={draft.id ? "(unchanged)" : "Org API key"} />
+                                <div className="text-xs text-muted-foreground">Create in Pangolin → Organization → API Keys. Grant read access to logs, sites, and resources. Stored encrypted.</div>
                             </div>
-                            <label className="l">Poll every</label>
-                            <div className="row">
-                                <input className="input" type="number" min={10} style={{ width: 90 }} value={draft.poll_interval_s} onChange={(e) => setDraft({ ...draft, poll_interval_s: Number(e.target.value) })} /> seconds
+                            <label className="text-[0.8125rem] text-muted-foreground">Poll every</label>
+                            <div className="flex flex-wrap items-center gap-2 text-[0.8125rem]">
+                                <input className="input w-24" type="number" min={10} value={draft.poll_interval_s} onChange={(e) => setDraft({ ...draft, poll_interval_s: Number(e.target.value) })} /> seconds
                                 <label>
                                     <input type="checkbox" checked={draft.enabled} onChange={(e) => setDraft({ ...draft, enabled: e.target.checked })} /> Enabled
                                 </label>
                             </div>
                             <span />
-                            <div className="row">
-                                <button className="btn" onClick={runTest} disabled={busy || !draft.org_id || !draft.api_key}>
+                            <div className="flex flex-wrap items-center gap-2 text-[0.8125rem]">
+                                <button className="btn btn-secondary btn-sm" onClick={runTest} disabled={busy || !draft.org_id || !draft.api_key}>
                                     {busy ? "Testing…" : "Test connection"}
                                 </button>
-                                <button className="btn primary" onClick={save} disabled={!draft.name || !draft.org_id || (!draft.id && !draft.api_key)}>
+                                <button className="btn btn-primary btn-sm" onClick={save} disabled={!draft.name || !draft.org_id || (!draft.id && !draft.api_key)}>
                                     Save
                                 </button>
-                                <button className="btn" onClick={() => setDraft(null)}>
+                                <button className="btn btn-secondary btn-sm" onClick={() => setDraft(null)}>
                                     Cancel
                                 </button>
-                                {err && <span className="err">{err}</span>}
+                                {err && <span className="text-xs text-danger">{err}</span>}
                             </div>
                             {test && (
                                 <>
                                     <span />
-                                    <div className={test.ok ? "" : "err"}>
+                                    <div className={`text-[0.8125rem] ${test.ok ? "" : "text-danger"}`}>
                                         {test.ok ? (
                                             <>
-                                                <span className="ok">Connected.</span> {test.sites} sites, {test.resources} resources. Logs:{" "}
+                                                <span className="text-success">Connected.</span> {test.sites} sites, {test.resources} resources. Logs:{" "}
                                                 {Object.entries(test.logs ?? {}).map(([k, v]) => (
-                                                    <span key={k} style={{ marginRight: 10 }}>
-                                                        {k} <span className={v === "ok" ? "ok" : "err"}>{v === "ok" ? "✓" : `✗ ${v}`}</span>
+                                                    <span key={k} className="mr-3">
+                                                        {k} <span className={v === "ok" ? "text-success" : "text-danger"}>{v === "ok" ? "✓" : `✗ ${v}`}</span>
                                                     </span>
                                                 ))}
                                             </>
@@ -131,7 +132,7 @@ export function SettingsView({ meta, reload, onPlace }: { meta: Meta | null; rel
                             )}
                         </div>
                     )}
-                    <table className="grid">
+                    <div className="overflow-x-auto"><table className="data-table">
                         <thead>
                             <tr>
                                 <th>Name</th>
@@ -145,25 +146,25 @@ export function SettingsView({ meta, reload, onPlace }: { meta: Meta | null; rel
                             {meta?.connections.map((c) => (
                                 <tr key={c.id}>
                                     <td>
-                                        <span className={`verdict ${c.enabled ? "allow" : "na"}`} /> {c.name} {c.demo && <span className="muted">(demo)</span>}
+                                        <span className="inline-flex items-center gap-2"><span className={`size-2 rounded-full ${c.enabled ? "bg-success" : "bg-muted-foreground/40"}`} title={c.enabled ? "Enabled" : "Disabled"} />{c.name}{c.demo && <span className="badge badge-warning">demo</span>}</span>
                                     </td>
-                                    <td className="mono">{c.org_id}</td>
-                                    <td className="muted">{ago(c.last_poll_at)}</td>
-                                    <td style={{ maxWidth: 340, whiteSpace: "normal" }}>
-                                        {c.last_error ? <span className="err">{c.last_error}</span> : <span className="ok">OK</span>}
-                                        {c.disabled_kinds.length > 0 && <div className="hint">Unavailable: {c.disabled_kinds.join(", ")} logs</div>}
+                                    <td className="font-mono text-xs">{c.org_id}</td>
+                                    <td className="text-muted-foreground">{ago(c.last_poll_at)}</td>
+                                    <td className="max-w-[340px] whitespace-normal">
+                                        {c.last_error ? <span className="text-xs text-danger">{c.last_error}</span> : <span className="text-success">OK</span>}
+                                        {c.disabled_kinds.length > 0 && <div className="text-xs text-muted-foreground">Unavailable: {c.disabled_kinds.join(", ")} logs</div>}
                                     </td>
-                                    <td className="num">
-                                        <button className="btn ghost" onClick={() => sync(c.id)} disabled={syncing === c.id}>
+                                    <td className="text-right">
+                                        <button className="btn btn-ghost btn-sm" onClick={() => sync(c.id)} disabled={syncing === c.id}>
                                             {syncing === c.id ? "Syncing…" : "Sync now"}
                                         </button>
                                         {!c.demo && (
-                                            <button className="btn ghost" onClick={() => edit(c)}>
+                                            <button className="btn btn-ghost btn-sm" onClick={() => edit(c)}>
                                                 Edit
                                             </button>
                                         )}
                                         <button
-                                            className="btn ghost danger"
+                                            className="btn btn-ghost btn-sm hover:text-danger"
                                             onClick={async () => {
                                                 if (confirm(`Remove "${c.name}" and all of its stored events?`)) {
                                                     await api(`/api/connections/${c.id}`, { method: "DELETE" });
@@ -178,21 +179,21 @@ export function SettingsView({ meta, reload, onPlace }: { meta: Meta | null; rel
                             ))}
                             {meta?.connections.length === 0 && (
                                 <tr>
-                                    <td colSpan={5} className="muted" style={{ padding: 16, textAlign: "center" }}>
+                                    <td colSpan={5} className="py-8 text-center text-muted-foreground">
                                         Add a Pangolin API key to start pulling traffic.
                                     </td>
                                 </tr>
                             )}
                         </tbody>
-                    </table>
+                    </table></div>
                 </div>
 
                 <div className="card">
-                    <div className="panel-h">
-                        <h3>Site locations</h3>
-                        <span className="hint">Pangolin doesn't know where your sites are. Place them so traffic arcs have a destination.</span>
+                    <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-3">
+                        <h3 className="text-[0.9375rem] font-semibold">Site locations</h3>
+                        <span className="text-xs text-muted-foreground">Pangolin doesn't know where your sites are. Place them so traffic arcs have a destination.</span>
                     </div>
-                    <table className="grid">
+                    <div className="overflow-x-auto"><table className="data-table">
                         <thead>
                             <tr>
                                 <th>Site</th>
@@ -206,22 +207,22 @@ export function SettingsView({ meta, reload, onPlace }: { meta: Meta | null; rel
                             {meta?.sites.map((s) => (
                                 <tr key={`${s.connection_id}:${s.site_id}`}>
                                     <td>
-                                        <span className={`verdict ${s.online ? "allow" : "na"}`} /> {s.name}
+                                        <span className="inline-flex items-center gap-2"><span className={`size-2 rounded-full ${s.online ? "bg-success" : "bg-muted-foreground/40"}`} title={s.online ? "Online" : "Offline"} />{s.name}</span>
                                     </td>
                                     <td>
                                         <input className="input" defaultValue={s.place_label ?? ""} placeholder="City" onBlur={(e) => e.target.value !== (s.place_label ?? "") && saveSite(s, { place_label: e.target.value || null })} />
                                     </td>
                                     <td>
-                                        <input className="input" style={{ width: 100 }} defaultValue={s.lat ?? ""} key={`lat${s.lat}`} onBlur={(e) => saveSite(s, { lat: e.target.value === "" ? null : Number(e.target.value) })} />
+                                        <input className="input w-24" defaultValue={s.lat ?? ""} key={`lat${s.lat}`} onBlur={(e) => saveSite(s, { lat: e.target.value === "" ? null : Number(e.target.value) })} />
                                     </td>
                                     <td>
-                                        <input className="input" style={{ width: 100 }} defaultValue={s.lon ?? ""} key={`lon${s.lon}`} onBlur={(e) => saveSite(s, { lon: e.target.value === "" ? null : Number(e.target.value) })} />
+                                        <input className="input w-24" defaultValue={s.lon ?? ""} key={`lon${s.lon}`} onBlur={(e) => saveSite(s, { lon: e.target.value === "" ? null : Number(e.target.value) })} />
                                     </td>
-                                    <td className="num">
-                                        <button className="btn ghost" onClick={() => onPlace(s)}>
+                                    <td className="text-right">
+                                        <button className="btn btn-ghost btn-sm" onClick={() => onPlace(s)}>
                                             Place on globe
                                         </button>
-                                        <button className="btn ghost" onClick={() => geolocate(s)}>
+                                        <button className="btn btn-ghost btn-sm" onClick={() => geolocate(s)}>
                                             From IP
                                         </button>
                                     </td>
@@ -229,29 +230,29 @@ export function SettingsView({ meta, reload, onPlace }: { meta: Meta | null; rel
                             ))}
                             {meta?.sites.length === 0 && (
                                 <tr>
-                                    <td colSpan={5} className="muted" style={{ padding: 16, textAlign: "center" }}>
+                                    <td colSpan={5} className="py-8 text-center text-muted-foreground">
                                         Sites appear after the first sync.
                                     </td>
                                 </tr>
                             )}
                         </tbody>
-                    </table>
+                    </table></div>
                 </div>
 
                 <div className="card">
-                    <div className="panel-h">
-                        <h3>Geolocation</h3>
+                    <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-3">
+                        <h3 className="text-[0.9375rem] font-semibold">Geolocation</h3>
                     </div>
-                    <div className="body">
+                    <div className="p-4 text-[0.8125rem]">
                         {meta?.geoip ? (
                             <>
-                                <span className="ok">City-level GeoIP database loaded.</span> <GeoCredit attribution={meta?.geoAttribution} />
+                                <span className="text-success">City-level GeoIP database loaded.</span> <GeoCredit attribution={meta?.geoAttribution} />
                             </>
                         ) : (
                             <>
                                 <span>Using Pangolin's country codes only, so origins are placed at country centroids.</span>
-                                <div className="hint" style={{ marginTop: 6 }}>
-                                    For city-level placement run <code>npm run geoip:download</code> (DB-IP City Lite, CC BY 4.0) or drop a MaxMind GeoLite2-City.mmdb into <code>data/geo/</code>, then restart.
+                                <div className="mt-1.5 text-xs text-muted-foreground">
+                                    For city-level placement run <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">npm run geoip:download</code> (DB-IP City Lite, CC BY 4.0) or drop a MaxMind GeoLite2-City.mmdb into <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">data/geo/</code>, then restart.
                                 </div>
                             </>
                         )}

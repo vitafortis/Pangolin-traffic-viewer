@@ -1,5 +1,6 @@
 node_modules/
 dist/
-data/
+/data/
 .env
 *.mmdb
+e2e/out/

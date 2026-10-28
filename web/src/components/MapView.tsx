@@ -1,13 +1,37 @@
 import { useCallback, useEffect, useState } from "react";
+import { Layers as LayersIcon, MapPin, X } from "lucide-react";
 import { api, filterParams, fmtNum, type EventRow, type Filters, type GeoRow, type GroupRow, type Meta, type Site, type Stats } from "../api";
+import { GLOBE, type Theme } from "../theme";
 import { GlobeView, type Layers } from "./GlobeView";
 import { Timeline } from "./Timeline";
 import { GroupPanel } from "./GroupPanel";
 import { EventDrawer, EventsTable } from "./EventsTable";
 import { GeoCredit } from "./GeoCredit";
 
+const DEFAULT_LAYERS: Layers = { arcs: true, countries: true, points: true, heatmap: false, live: true };
+const LAYER_LABELS: [keyof Layers, string][] = [
+    ["arcs", "Traffic arcs"],
+    ["countries", "Country shading"],
+    ["points", "Origin dots"],
+    ["heatmap", "Density heatmap"],
+    ["live", "Live pulses"]
+];
+
+function Stat({ label, value, sub, tone }: { label: string; value: string; sub?: string; tone?: "denied" }) {
+    return (
+        <div className="float min-w-0 flex-1 px-2.5 py-1.5 sm:min-w-24 sm:flex-none sm:px-3 sm:py-2">
+            <div className={`text-base font-semibold tabular-nums sm:text-lg ${tone === "denied" && value !== "0" ? "text-denied" : ""}`}>{value}</div>
+            <div className="section-title truncate max-sm:text-[0.625rem]">
+                {label}
+                {sub && <span className="normal-case max-sm:hidden"> · {sub}</span>}
+            </div>
+        </div>
+    );
+}
+
 export function MapView({
     meta,
+    theme,
     filters,
     setFilters,
     tick,
@@ -17,6 +41,7 @@ export function MapView({
     reloadMeta
 }: {
     meta: Meta | null;
+    theme: Theme;
     filters: Filters;
     setFilters: (f: Filters) => void;
     tick: number;
@@ -26,6 +51,7 @@ export function MapView({
     reloadMeta: () => void;
 }) {
     const [geo, setGeo] = useState<GeoRow[]>([]);
+    const [byCountry, setByCountry] = useState<GroupRow[]>([]);
     const [stats, setStats] = useState<Stats | null>(null);
     const [ts, setTs] = useState<{ step: number; rows: { t: number; count: number; denied: number }[] }>({ step: 3600, rows: [] });
     const [groupBy, setGroupBy] = useState(() => localStorage.getItem("ptv.groupBy") ?? "country");
@@ -35,12 +61,13 @@ export function MapView({
     const [openId, setOpenId] = useState<number | null>(null);
     const [layers, setLayers] = useState<Layers>(() => {
         try {
-            return { arcs: true, heatmap: true, points: false, live: true, ...JSON.parse(localStorage.getItem("ptv.layers") ?? "{}") };
+            return { ...DEFAULT_LAYERS, ...JSON.parse(localStorage.getItem("ptv.layers.v2") ?? "{}") };
         } catch {
-            return { arcs: true, heatmap: true, points: false, live: true };
+            return DEFAULT_LAYERS;
         }
     });
     const [err, setErr] = useState<string | null>(null);
+    const [layersOpen, setLayersOpen] = useState(() => matchMedia("(min-width: 640px)").matches);
 
     // Relative ranges resolve "now" at fetch time, so key effects on the filter object, not the resolved params.
     const filterKey = JSON.stringify(filters);
@@ -51,13 +78,15 @@ export function MapView({
         let stale = false;
         Promise.all([
             api<{ rows: GeoRow[] }>("/api/geo", { params }),
+            api<{ rows: GroupRow[] }>("/api/group", { params: { ...params, by: "country", limit: "300" } }),
             api<Stats>("/api/stats", { params }),
             api<{ step: number; rows: { t: number; count: number; denied: number }[] }>("/api/timeseries", { params: { ...params, buckets: "120" } }),
             api<{ rows: EventRow[] }>("/api/events", { params: { ...params, limit: "300" } })
         ])
-            .then(([g, s, t, e]) => {
+            .then(([g, c, s, t, e]) => {
                 if (stale) return;
                 setGeo(g.rows);
+                setByCountry(c.rows);
                 setStats(s);
                 setTs(t);
                 setEvents((prev) => {
@@ -79,7 +108,7 @@ export function MapView({
         api<{ rows: GroupRow[] }>("/api/group", { params: { ...params, by: groupBy, limit: "200" } }).then((r) => setGroups(r.rows));
     }, [groupBy, filterKey, tick]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    useEffect(() => localStorage.setItem("ptv.layers", JSON.stringify(layers)), [layers]);
+    useEffect(() => localStorage.setItem("ptv.layers.v2", JSON.stringify(layers)), [layers]);
 
     const add = (k: "countries" | "resources" | "sites", v: string) => !filters[k].includes(v) && setFilters({ ...filters, [k]: [...filters[k], v] });
 
@@ -105,86 +134,86 @@ export function MapView({
     const deniedPct = stats?.total ? Math.round(((stats.denied ?? 0) / stats.total) * 100) : 0;
 
     return (
-        <div className="mapview">
-            <div className="globe-wrap">
+        <div className="grid min-h-0 flex-1 grid-cols-1 grid-rows-[minmax(55vh,1fr)_auto_auto] overflow-y-auto lg:grid-cols-[1fr_360px] lg:grid-rows-[1fr_270px] lg:overflow-hidden">
+            <div className="dot-grid relative min-h-0 overflow-hidden bg-background">
                 <GlobeView
+                    theme={theme}
                     geo={geo}
+                    byCountry={byCountry}
                     sites={meta?.sites ?? []}
                     live={live}
                     layers={layers}
                     placing={placing}
                     onPlace={place}
-                    onPickOrigin={(r) => r.country && add("countries", r.country)}
+                    onPickCountry={(cc) => add("countries", cc)}
                     onPickSite={(s) => add("sites", `${s.connection_id}:${s.site_id}`)}
                 />
-                <div className="overlay stats">
-                    <div className="stat">
-                        <div className="v">{fmtNum(stats?.total)}</div>
-                        <div className="l">Events</div>
-                    </div>
-                    <div className="stat">
-                        <div className="v" style={{ color: deniedPct ? "var(--denied)" : undefined }}>{fmtNum(stats?.denied)}</div>
-                        <div className="l">Denied · {deniedPct}%</div>
-                    </div>
-                    <div className="stat">
-                        <div className="v">{fmtNum(stats?.unique_ips)}</div>
-                        <div className="l">Unique IPs</div>
-                    </div>
-                    <div className="stat">
-                        <div className="v">{fmtNum(stats?.countries)}</div>
-                        <div className="l">Countries</div>
-                    </div>
+
+                <div className="pointer-events-none absolute top-3 left-3 flex gap-1.5 max-sm:right-3 sm:gap-2 [&>*]:pointer-events-auto">
+                    <Stat label="Events" value={fmtNum(stats?.total)} />
+                    <Stat label="Denied" value={fmtNum(stats?.denied)} sub={`${deniedPct}%`} tone="denied" />
+                    <Stat label="Unique IPs" value={fmtNum(stats?.unique_ips)} />
+                    <Stat label="Countries" value={fmtNum(stats?.countries)} />
                 </div>
-                <div className="overlay layers" role="group" aria-label="Map layers">
-                    {(
-                        [
-                            ["arcs", "Traffic arcs"],
-                            ["heatmap", "Origin heatmap"],
-                            ["points", "Origin points"],
-                            ["live", "Live pulses"]
-                        ] as const
-                    ).map(([k, l]) => (
-                        <label key={k}>
-                            <input type="checkbox" checked={layers[k]} onChange={(e) => setLayers({ ...layers, [k]: e.target.checked })} /> {l}
-                        </label>
-                    ))}
+
+                <div className="float absolute top-[72px] right-3 sm:top-3" role="group" aria-label="Map layers">
+                    <button className="section-title flex w-full items-center gap-1.5 px-3 py-2 hover:text-foreground" onClick={() => setLayersOpen(!layersOpen)} aria-expanded={layersOpen}>
+                        <LayersIcon className="size-3.5" /> Layers
+                    </button>
+                    {layersOpen && (
+                        <div className="space-y-1 px-3 pb-2.5">
+                            {LAYER_LABELS.map(([k, l]) => (
+                                <label key={k} className="flex cursor-pointer items-center gap-2 text-xs text-muted-foreground hover:text-foreground">
+                                    <input type="checkbox" className="accent-[var(--primary)]" checked={layers[k]} onChange={(e) => setLayers({ ...layers, [k]: e.target.checked })} />
+                                    {l}
+                                </label>
+                            ))}
+                        </div>
+                    )}
                 </div>
+
                 {placing ? (
-                    <div className="overlay placing">
-                        Click the globe to place <b>{placing.name}</b>
-                        <button className="btn" onClick={() => setPlacing(null)}>
-                            Cancel
+                    <div className="float absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-3 border-primary/40 px-3.5 py-2 text-[0.8125rem]">
+                        <MapPin className="size-4 text-primary" />
+                        <span>
+                            Click the globe to place <b>{placing.name}</b>
+                        </span>
+                        <button className="btn btn-secondary btn-sm" onClick={() => setPlacing(null)}>
+                            <X /> Cancel
                         </button>
                     </div>
                 ) : (
-                    <div className="overlay legend">
-                        <span>
-                            <i style={{ background: "var(--allowed)" }} /> mostly allowed
+                    <div className="float absolute bottom-3 left-3 flex flex-wrap items-center gap-x-4 gap-y-1 px-3 py-1.5 text-xs text-muted-foreground">
+                        <span className="verdict allow">
+                            <span className="font-normal text-muted-foreground">mostly allowed</span>
                         </span>
-                        <span>
-                            <i style={{ background: "var(--denied)" }} /> mostly denied
+                        <span className="verdict deny">
+                            <span className="font-normal text-muted-foreground">mostly denied</span>
                         </span>
-                        <span>
-                            <i className="dot" style={{ background: "var(--site)" }} /> site
+                        <span className="inline-flex items-center gap-1.5">
+                            <span className="size-2 rounded-full bg-foreground" /> site
                         </span>
+                        {layers.countries && (
+                            <span className="inline-flex items-center gap-1.5">
+                                <span className="h-2 w-10 rounded-sm" style={{ background: `linear-gradient(to right, ${GLOBE[theme].ramp.join(", ")})` }} /> traffic by country
+                            </span>
+                        )}
                         {unplaced.length > 0 && (
-                            <button className="btn" style={{ padding: "1px 8px" }} onClick={() => setPlacing(unplaced[0])} title="Sites need a location before arcs can be drawn to them">
-                                Place {unplaced.length} unplaced site{unplaced.length > 1 ? "s" : ""}
+                            <button className="btn btn-primary btn-sm" onClick={() => setPlacing(unplaced[0])} title="Sites need a location before arcs can be drawn to them">
+                                <MapPin /> Place {unplaced.length} site{unplaced.length > 1 ? "s" : ""}
                             </button>
                         )}
                     </div>
                 )}
-                <GeoCredit className="overlay" attribution={meta?.geoAttribution} />
-                {err && (
-                    <div className="overlay" style={{ top: 80, left: 12 }}>
-                        <span className="err">{err}</span>
-                    </div>
-                )}
+                <GeoCredit attribution={meta?.geoAttribution} className="absolute right-3 bottom-3 rounded bg-card/70 px-1.5 backdrop-blur" />
+                {err && <div className="float absolute top-24 left-3 px-3 py-2 text-xs text-danger">{err}</div>}
             </div>
-            <div className="side">
+
+            <aside className="flex min-h-0 flex-col border-t border-border bg-card max-lg:max-h-[480px] lg:row-span-2 lg:border-t-0 lg:border-l">
                 <GroupPanel by={groupBy} setBy={setGroupBy} rows={groups} onPick={pickGroup} />
-            </div>
-            <div className="bottom">
+            </aside>
+
+            <section className="grid min-h-0 grid-rows-[92px_1fr] border-t border-border bg-card max-lg:min-h-[420px]">
                 <Timeline
                     rows={ts.rows}
                     step={ts.step}
@@ -193,7 +222,8 @@ export function MapView({
                     onRange={(from, to) => setFilters({ ...filters, range: "custom", from, to })}
                 />
                 <EventsTable rows={events} newIds={newIds} onOpen={setOpenId} />
-            </div>
+            </section>
+
             {openId != null && <EventDrawer id={openId} attribution={meta?.geoAttribution} onClose={() => setOpenId(null)} onFilterIp={(ip) => setFilters({ ...filters, ip })} />}
         </div>
     );
