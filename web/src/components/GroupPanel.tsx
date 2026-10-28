@@ -32,9 +32,9 @@ export function GroupPanel({ by, setBy, rows, onPick }: { by: string; setBy: (b:
                 <table className="data-table table-fixed">
                     <colgroup>
                         <col />
-                        <col className="w-[68px]" />
-                        <col className="w-[60px]" />
+                        <col className="w-[64px]" />
                         <col className="w-[56px]" />
+                        <col className="w-[64px]" />
                     </colgroup>
                     <thead>
                         <tr>
