@@ -54,6 +54,23 @@ for (const theme of ["dark", "light"]) {
         await shot("event");
         await page.keyboard.press("Escape");
 
+        // Drag the events panel up and the group-by panel wider; both should grow.
+        const split = page.getByRole("separator", { name: "Resize events panel" });
+        const sb = await split.boundingBox();
+        await page.mouse.move(sb.x + sb.width / 2, sb.y + sb.height / 2);
+        await page.mouse.down();
+        await page.mouse.move(sb.x + sb.width / 2, sb.y - 250, { steps: 8 });
+        await page.mouse.up();
+        const side = await page.getByRole("separator", { name: "Resize group-by panel" }).boundingBox();
+        await page.mouse.move(side.x + side.width / 2, side.y + 300);
+        await page.mouse.down();
+        await page.mouse.move(side.x - 120, side.y + 300, { steps: 8 });
+        await page.mouse.up();
+        await page.waitForTimeout(800);
+        const after = (await split.boundingBox()).y;
+        if (after > sb.y - 200) problems.push(`${tag}: events panel did not resize (${sb.y} -> ${after})`);
+        await shot("resized");
+
         // Review the first suggested rule: the composer should load an impact preview.
         await page.goto(`${base}/?tab=policies`);
         await page.waitForTimeout(2500);

@@ -7,6 +7,7 @@ import { Timeline } from "./Timeline";
 import { GroupPanel } from "./GroupPanel";
 import { EventDrawer, EventsTable } from "./EventsTable";
 import { GeoCredit } from "./GeoCredit";
+import { Splitter, useStoredSize } from "./Splitter";
 
 const DEFAULT_LAYERS: Layers = { arcs: true, countries: true, points: true, heatmap: false, live: true };
 const LAYER_LABELS: [keyof Layers, string][] = [
@@ -125,11 +126,18 @@ export function MapView({
         [placing, setPlacing, reloadMeta]
     );
 
+    // Desktop layout: the events panel and the group-by sidebar can be dragged larger.
+    const [bottomH, setBottomH] = useStoredSize("ptv.split.bottom", 300, 160, () => window.innerHeight - 220);
+    const [sideW, setSideW] = useStoredSize("ptv.split.side", 360, 280, () => window.innerWidth - 640);
+
     const unplaced = (meta?.sites ?? []).filter((s) => s.lat == null);
     const deniedPct = stats?.total ? Math.round(((stats.denied ?? 0) / stats.total) * 100) : 0;
 
     return (
-        <div className="grid min-h-0 flex-1 grid-cols-1 grid-rows-[minmax(55vh,1fr)_auto_auto] overflow-y-auto lg:grid-cols-[1fr_360px] lg:grid-rows-[1fr_270px] lg:overflow-hidden">
+        <div
+            className="grid min-h-0 flex-1 grid-cols-1 grid-rows-[minmax(55vh,1fr)_auto_auto] overflow-y-auto lg:grid-cols-[1fr_var(--side-w)] lg:grid-rows-[1fr_var(--bottom-h)] lg:overflow-hidden"
+            style={{ "--side-w": `${sideW}px`, "--bottom-h": `${bottomH}px` } as React.CSSProperties}
+        >
             {/* The globe's stage is black in both themes so the traffic colours pop; panels on it stay themed. */}
             <div className="relative min-h-0 overflow-hidden bg-black [background-image:radial-gradient(rgb(255_255_255/0.07)_1px,transparent_1px)] [background-size:18px_18px]">
                 <GlobeView
@@ -204,11 +212,13 @@ export function MapView({
                 {err && <div className="float absolute top-24 left-3 px-3 py-2 text-xs text-danger">{err}</div>}
             </div>
 
-            <aside className="flex min-h-0 flex-col border-t border-border bg-card max-lg:max-h-[480px] lg:row-span-2 lg:border-t-0 lg:border-l">
+            <aside className="relative flex min-h-0 flex-col border-t border-border bg-card max-lg:max-h-[480px] lg:row-span-2 lg:border-t-0 lg:border-l">
+                <Splitter axis="x" size={sideW} setSize={setSideW} initial={360} label="Resize group-by panel" />
                 <GroupPanel by={groupBy} setBy={setGroupBy} rows={groups} onPick={pickGroup} />
             </aside>
 
-            <section className="grid min-h-0 grid-rows-[92px_1fr] border-t border-border bg-card max-lg:min-h-[420px]">
+            <section className="relative grid min-h-0 grid-rows-[92px_1fr] border-t border-border bg-card max-lg:min-h-[420px]">
+                <Splitter axis="y" size={bottomH} setSize={setBottomH} initial={300} label="Resize events panel" />
                 <Timeline
                     rows={ts.rows}
                     step={ts.step}
